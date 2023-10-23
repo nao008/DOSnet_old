@@ -153,7 +153,7 @@ def create_model(shared_conv, channels):
 
     out = Dense(1, activation="linear")(convmerge)
     # shared_conv.summary()
-    model = Model(input=[input1, input2, input3], output=out)
+    model = Model([input1, input2, input3],out)
     return model
 
 
@@ -345,9 +345,12 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     print("test MAE: ", mean_absolute_error(y_test, test_out))
     print("test RMSE: ", mean_squared_error(y_test, test_out) ** (0.5))
 
-    with open("predict_train.txt", "w") as f:
+    #入力データ名を取得
+    data_dir = args.data_dir
+    
+    with open(f"{data_dir}_predict_train.txt", "w") as f:
         np.savetxt(f, np.stack((y_train, train_out), axis=-1))
-    with open("predict_test.txt", "w") as f:
+    with open(f"{data_dir}_predict_test.txt", "w") as f:
         np.savetxt(f, np.stack((y_test, test_out), axis=-1))
 
     if args.save_model == 1:

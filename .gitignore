@@ -1,0 +1,7 @@
+/__pycache__/
+*_predict_test.txt
+*_predict_train.txt
+*_data.tar.gz
+*_data/
+DOSnet_saved.h5
+/venv/
