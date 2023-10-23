@@ -30,6 +30,11 @@ python Main.py --multi_adsorbate=1 --data_dir='Combined_data' --save_model=1 --b
 
 Output will be written to txt files as "predict_test.txt" or "predict_train.txt" or "CV_predict.txt" for a cross-validation run.
 
+4. plot.py
+
+python3 plot.py --dataname=`CH_data`
+
+
 **Notes:**
 
 1. For user generated training data, please note the data format for the ML input used here: \
