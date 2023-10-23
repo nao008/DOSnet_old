@@ -32,7 +32,7 @@ Output will be written to txt files as "predict_test.txt" or "predict_train.txt"
 
 4. plot.py
 
-python3 plot.py --dataname=`CH_data`
+python3 plot.py --dataname="CH_data"
 
 
 **Notes:**
