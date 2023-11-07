@@ -83,13 +83,12 @@ args = parser.parse_args(sys.argv[1:])
 
 def main():
     start_time = time.time()
-    datadir = f"data/{args.data_dir}"
 
     # load data (replace with your own depending on the data format)
     # Data format for x_surface_dos and x_adsorbate_dos is a numpy array with shape: (A, B, C) where A is number of samples, B is length of DOS file (2000), C is number of channels.
     # Number of channels here is 27 for x_surface_dos which contains 9 orbitals x up to 3 adsorbing surface atoms. E.g. a top site will have the first 9 channels filled and remaining as zeros.
     x_surface_dos, x_adsorbate_dos, y_targets = load_data(
-        args.multi_adsorbate, datadir
+        args.multi_adsorbate, args.data_dir
     )
 
     if args.seed == 0:
@@ -106,12 +105,12 @@ def main():
 def load_data(multi_adsorbate, data_dir):
     ###load data containing: (1) dos of surface, (2) adsorption energy(target), (3) dos of adsorbate in gas phase (for multi-adsorbate)
     if args.multi_adsorbate == 0:
-        with open(data_dir, "rb") as f:
+        with open(args.data_dir, "rb") as f:
             surface_dos = pickle.load(f)
             targets = pickle.load(f)
         x_adsorbate_dos = []
     elif args.multi_adsorbate == 1:
-        with open(data_dir, "rb") as f:
+        with open(args.data_dir, "rb") as f:
             surface_dos = pickle.load(f)
             targets = pickle.load(f)
             x_adsorbate_dos = pickle.load(f)
