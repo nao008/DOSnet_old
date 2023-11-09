@@ -46,8 +46,13 @@ for value in values:
         nearest = df.iloc[(df[0]-value).abs().argsort()[:1]]
         nearest_df = pd.concat([nearest_df, nearest]).reset_index(drop=True)
     # print(nearest_df)
-    log[f"{nearest_df[0][0]}_max"] = nearest_df[1].max()
-    log[f"{nearest_df[0][0]}_min"] = nearest_df[1].min()
+    #logに残す
+    max_value = nearest_df[1].max()
+    min_value = nearest_df[1].min()
+    max_index = nearest_df[1].idxmax()
+    min_index = nearest_df[1].idxmin()
+    log[f"{nearest_df[0][0]}_max:{max_index * 0.2}"] = max_value
+    log[f"{nearest_df[0][0]}_min:{min_index * 0.2}"] = min_value
     all_nearest_df = pd.concat([all_nearest_df, nearest_df]).reset_index(drop=True)
 
 m = all_nearest_df.pivot_table(index=0, values=1, aggfunc='mean')
@@ -64,7 +69,6 @@ m.plot(xlim=[-0.2, 6.2], yerr=e)
 plt.xlabel('true')
 plt.ylabel('predict')
 print(log)
-plt.legend()
 plt.tight_layout()
 plt.savefig("resultplot/dropout.png")
 plt.show()
