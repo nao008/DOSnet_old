@@ -13,3 +13,5 @@ data/
 /lib64/
 /share/
 .cfg
+test.py
+/logs/*

@@ -1,3 +1,4 @@
+# ドロップアウトの変更による精度の差
 import numpy as np
 import pickle
 import time
@@ -80,15 +81,16 @@ parser.add_argument(
 )
 args = parser.parse_args(sys.argv[1:])
 
-
+log = {}
 def main():
     start_time = time.time()
+    datadir = f"data/{args.data_dir}"
 
     # load data (replace with your own depending on the data format)
     # Data format for x_surface_dos and x_adsorbate_dos is a numpy array with shape: (A, B, C) where A is number of samples, B is length of DOS file (2000), C is number of channels.
     # Number of channels here is 27 for x_surface_dos which contains 9 orbitals x up to 3 adsorbing surface atoms. E.g. a top site will have the first 9 channels filled and remaining as zeros.
     x_surface_dos, x_adsorbate_dos, y_targets = load_data(
-        args.multi_adsorbate, args.data_dir
+        args.multi_adsorbate, datadir
     )
 
     if args.seed == 0:
@@ -100,17 +102,18 @@ def main():
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets)
 
     print("--- %s seconds ---" % (time.time() - start_time))
+    print(log)
 
 
 def load_data(multi_adsorbate, data_dir):
     ###load data containing: (1) dos of surface, (2) adsorption energy(target), (3) dos of adsorbate in gas phase (for multi-adsorbate)
     if args.multi_adsorbate == 0:
-        with open(args.data_dir, "rb") as f:
+        with open(data_dir, "rb") as f:
             surface_dos = pickle.load(f)
             targets = pickle.load(f)
         x_adsorbate_dos = []
     elif args.multi_adsorbate == 1:
-        with open(args.data_dir, "rb") as f:
+        with open(data_dir, "rb") as f:
             surface_dos = pickle.load(f)
             targets = pickle.load(f)
             x_adsorbate_dos = pickle.load(f)
@@ -133,7 +136,7 @@ def load_data(multi_adsorbate, data_dir):
 
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
-def create_model(shared_conv, channels):
+def create_model(shared_conv, channels, dropout):
 
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
@@ -146,7 +149,7 @@ def create_model(shared_conv, channels):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(0.2)(convmerge)
+    convmerge = Dropout(dropout)(convmerge)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
@@ -279,83 +282,93 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
     tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
 
-    ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
-    if args.multi_adsorbate == 0:
-        if args.load_model == 0:
-            model = create_model(shared_conv, args.channels)
+    ### define dropoout
+    Dropouts = [0, 0.2, 0.4, 0.6, 0.8]
+    for dropout in Dropouts:
+
+        ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
+        if args.multi_adsorbate == 0:
+            if args.load_model == 0:
+                model = create_model(shared_conv, args.channels, dropout)
+                model.compile(
+                    loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                )
+            elif args.load_model == 1:
+                print("Loading model...")
+                model = load_model("models/DOSnet_saved.h5", compile=False)
+                model.compile(
+                    loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                )
+            model.summary()
+            model.fit(
+                [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]],
+                y_train,
+                batch_size=args.batch_size,
+                epochs=args.epochs,
+                validation_data=(
+                    [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]],
+                    y_test,
+                ),
+                callbacks=[tensorboard, lr_scheduler],
+            )
+            train_out = model.predict(
+                [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]]
+            )
+            train_out = train_out.reshape(len(train_out))
+            test_out = model.predict(
+                [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]]
+            )
+            test_out = test_out.reshape(len(test_out))
+
+        elif args.multi_adsorbate == 1:
+            model = create_model_combined(shared_conv, args.channels)
             model.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
-        elif args.load_model == 1:
-            print("Loading model...")
-            model = load_model("models/DOSnet_saved.h5", compile=False)
-            model.compile(
-                loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+            model.summary()
+            model.fit(
+                [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train],
+                y_train,
+                batch_size=args.batch_size,
+                epochs=args.epochs,
+                validation_data=(
+                    [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test],
+                    y_test,
+                ),
+                callbacks=[tensorboard, lr_scheduler],
             )
-        model.summary()
-        model.fit(
-            [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]],
-            y_train,
-            batch_size=args.batch_size,
-            epochs=args.epochs,
-            validation_data=(
-                [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]],
-                y_test,
-            ),
-            callbacks=[tensorboard, lr_scheduler],
-        )
-        train_out = model.predict(
-            [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]]
-        )
-        train_out = train_out.reshape(len(train_out))
-        test_out = model.predict(
-            [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]]
-        )
-        test_out = test_out.reshape(len(test_out))
+            train_out = model.predict(
+                [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train]
+            )
+            train_out = train_out.reshape(len(train_out))
+            test_out = model.predict(
+                [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test]
+            )
+            test_out = test_out.reshape(len(test_out))
 
-    elif args.multi_adsorbate == 1:
-        model = create_model_combined(shared_conv, args.channels)
-        model.compile(
-            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-        )
-        model.summary()
-        model.fit(
-            [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train],
-            y_train,
-            batch_size=args.batch_size,
-            epochs=args.epochs,
-            validation_data=(
-                [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test],
-                y_test,
-            ),
-            callbacks=[tensorboard, lr_scheduler],
-        )
-        train_out = model.predict(
-            [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train]
-        )
-        train_out = train_out.reshape(len(train_out))
-        test_out = model.predict(
-            [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test]
-        )
-        test_out = test_out.reshape(len(test_out))
+        ###this is just to write the results to a file
+        print("dropout: ",dropout)
+        print("train MAE: ", mean_absolute_error(y_train, train_out))
+        print("train RMSE: ", mean_squared_error(y_train, train_out) ** (0.5))
+        print("test MAE: ", mean_absolute_error(y_test, test_out))
+        print("test RMSE: ", mean_squared_error(y_test, test_out) ** (0.5))
 
-    ###this is just to write the results to a file
-    print("train MAE: ", mean_absolute_error(y_train, train_out))
-    print("train RMSE: ", mean_squared_error(y_train, train_out) ** (0.5))
-    print("test MAE: ", mean_absolute_error(y_test, test_out))
-    print("test RMSE: ", mean_squared_error(y_test, test_out) ** (0.5))
+        log[f"{dropout}_train_mae"] = mean_absolute_error(y_train, train_out)
+        log[f"{dropout}_train_rmse"] = mean_squared_error(y_train, train_out) ** (0.5)
+        log[f"{dropout}_test_mae"] = mean_absolute_error(y_test, test_out)
+        log[f"{dropout}_test_rmse"] = mean_squared_error(y_test, test_out) ** (0.5)
 
-    #入力データ名を取得
-    data_dir = args.data_dir
-    
-    with open(f"result/{data_dir}_predict_train.txt", "w") as f:
-        np.savetxt(f, np.stack((y_train, train_out), axis=-1))
-    with open(f"result/{data_dir}_predict_test.txt", "w") as f:
-        np.savetxt(f, np.stack((y_test, test_out), axis=-1))
+        #入力データ名を取得
+        data_dir = args.data_dir
+        
+        with open(f"result/{data_dir}_dropout{dropout}_predict_train.txt", "w") as f:
+            np.savetxt(f, np.stack((y_train, train_out), axis=-1))
+        with open(f"result/{data_dir}_dropout{dropout}_predict_test.txt", "w") as f:
+            np.savetxt(f, np.stack((y_test, test_out), axis=-1))
 
-    if args.save_model == 1:
-        print("Saving model...")
-        model.save("models/DOSnet_saved.h5")
+        if args.save_model == 1:
+            print("Saving model...")
+            model.save(f"models/dropout_{dropout}_saved.h5")
 
 
 # kfold
@@ -389,7 +402,7 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets):
         shared_conv = dos_featurizer(args.channels)
         lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
         if args.multi_adsorbate == 0:
-            model_CV = create_model(shared_conv, args.channels)
+            model_CV = create_model(shared_conv, args.channels, dropout)
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
