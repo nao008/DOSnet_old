@@ -27,6 +27,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from tensorflow.random import set_seed
 
 
 parser = argparse.ArgumentParser(description="ML framework")
