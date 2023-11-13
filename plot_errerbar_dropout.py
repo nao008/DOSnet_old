@@ -22,7 +22,7 @@ args = parser.parse_args()
 dataname = args.dataname
 alldata = args.data
 log = {}
-dropout_vals = [0, 0.2, 0.4, 0.6, 0.8]
+dropout_vals = [0.3, 0.34, 0.38, 0.42, 0.46]
 # ファイル名のリスト
 filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
 
@@ -70,6 +70,6 @@ plt.xlabel('true')
 plt.ylabel('predict')
 print(log)
 plt.tight_layout()
-plt.savefig("resultplot/dropout.png")
+plt.savefig("resultplot/dropout_detail.png")
 plt.show()
 

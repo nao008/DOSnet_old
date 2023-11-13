@@ -136,8 +136,9 @@ def load_data(multi_adsorbate, data_dir):
 
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
-def create_model(shared_conv, channels, dropout):
+def create_model(shared_conv, channels, seed_model):
 
+    set_seed(seed_model)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
@@ -149,7 +150,7 @@ def create_model(shared_conv, channels, dropout):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(dropout)(convmerge)
+    convmerge = Dropout(0.42)(convmerge)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
@@ -282,20 +283,19 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
     tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
 
-    ### define dropoout
-    Dropouts = [0, 0.2, 0.4, 0.6, 0.8]
-    for dropout in Dropouts:
+    seed_model_list = [42, 666, 2023, 1, 3]
+    for seed_model in seed_model_list:
 
         ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
         if args.multi_adsorbate == 0:
             if args.load_model == 0:
-                model = create_model(shared_conv, args.channels, dropout)
+                model = create_model(shared_conv, args.channels, seed_model)
                 model.compile(
                     loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                 )
             elif args.load_model == 1:
                 print("Loading model...")
-                model = load_model("models/DOSnet_saved.h5", compile=False)
+                model = load_model(f"models/seed_{seed_model}_saved.h5", compile=False)
                 model.compile(
                     loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                 )
@@ -347,28 +347,28 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
             test_out = test_out.reshape(len(test_out))
 
         ###this is just to write the results to a file
-        print("dropout: ",dropout)
+        print("seed: ", seed_model)
         print("train MAE: ", mean_absolute_error(y_train, train_out))
         print("train RMSE: ", mean_squared_error(y_train, train_out) ** (0.5))
         print("test MAE: ", mean_absolute_error(y_test, test_out))
         print("test RMSE: ", mean_squared_error(y_test, test_out) ** (0.5))
 
-        log[f"{dropout}_train_mae"] = mean_absolute_error(y_train, train_out)
-        log[f"{dropout}_train_rmse"] = mean_squared_error(y_train, train_out) ** (0.5)
-        log[f"{dropout}_test_mae"] = mean_absolute_error(y_test, test_out)
-        log[f"{dropout}_test_rmse"] = mean_squared_error(y_test, test_out) ** (0.5)
+        log[f"{seed_model}_train_mae"] = mean_absolute_error(y_train, train_out)
+        log[f"{seed_model}_train_rmse"] = mean_squared_error(y_train, train_out) ** (0.5)
+        log[f"{seed_model}_test_mae"] = mean_absolute_error(y_test, test_out)
+        log[f"{seed_model}_test_rmse"] = mean_squared_error(y_test, test_out) ** (0.5)
 
         #入力データ名を取得
         data_dir = args.data_dir
         
-        with open(f"result/{data_dir}_dropout{dropout}_predict_train.txt", "w") as f:
+        with open(f"result/{data_dir}_seed{seed_model}_predict_train.txt", "w") as f:
             np.savetxt(f, np.stack((y_train, train_out), axis=-1))
-        with open(f"result/{data_dir}_dropout{dropout}_predict_test.txt", "w") as f:
+        with open(f"result/{data_dir}_seed{seed_model}_predict_test.txt", "w") as f:
             np.savetxt(f, np.stack((y_test, test_out), axis=-1))
 
         if args.save_model == 1:
             print("Saving model...")
-            model.save(f"models/dropout_{dropout}_saved.h5")
+            model.save(f"models/seed_{seed_model}_saved.h5")
 
 
 # kfold
