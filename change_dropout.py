@@ -287,7 +287,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     ### define dropoout
     Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
     Dropouts_detail = [0.3, 0.34, 0.38, 0.42, 0.46]
-    for dropout in Dropouts:
+    for dropout in Dropouts_detail:
 
         ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
         if args.multi_adsorbate == 0:
