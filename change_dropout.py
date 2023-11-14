@@ -27,6 +27,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from tensorflow.random import set_seed
 
 
 parser = argparse.ArgumentParser(description="ML framework")
@@ -137,7 +138,8 @@ def load_data(multi_adsorbate, data_dir):
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
 def create_model(shared_conv, channels, dropout):
-
+    
+    set_seed(42)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
@@ -283,7 +285,8 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
 
     ### define dropoout
-    Dropouts = [0.3, 0.34, 0.38, 0.42, 0.46]
+    Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
+    Dropouts_detail = [0.3, 0.34, 0.38, 0.42, 0.46]
     for dropout in Dropouts:
 
         ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison

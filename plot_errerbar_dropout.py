@@ -22,15 +22,18 @@ args = parser.parse_args()
 dataname = args.dataname
 alldata = args.data
 log = {}
-dropout_vals = [0.3, 0.34, 0.38, 0.42, 0.46]
+dropout_vals = [0.0, 0.2, 0.4, 0.6, 0.8]
+dropout_detail_vals = [0.3, 0.34, 0.38, 0.42, 0.46]
 # ファイル名のリスト
 filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
+# filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_detail_vals]
 
 # 各ファイルからデータを読み込み、データフレームに変換
 df_list = [pd.read_csv(filename, sep=" ", header=None) for filename in filenames]
 
 #各データフレームの名称と色
 labels = [f"dropout:{dropout_val}" for dropout_val in dropout_vals]
+# labels = [f"dropout:{dropout_val}" for dropout_val in dropout_detail_vals]
 colors = ['red', 'blue', 'green', 'yellow', 'purple']
 
 fig, ax = plt.subplots()
@@ -51,8 +54,10 @@ for value in values:
     min_value = nearest_df[1].min()
     max_index = nearest_df[1].idxmax()
     min_index = nearest_df[1].idxmin()
-    log[f"{nearest_df[0][0]}_max:{max_index * 0.2}"] = max_value
-    log[f"{nearest_df[0][0]}_min:{min_index * 0.2}"] = min_value
+    log[f"{nearest_df[0][0]}_max:{dropout_vals[max_index]}"] = max_value
+    log[f"{nearest_df[0][0]}_min:{dropout_vals[min_index]}"] = min_value
+    # log[f"{nearest_df[0][0]}_max:{dropout_detail_vals[max_index]}"] = max_value
+    # log[f"{nearest_df[0][0]}_min:{dropout_detail_vals[min_index]}"] = min_value
     all_nearest_df = pd.concat([all_nearest_df, nearest_df]).reset_index(drop=True)
 
 m = all_nearest_df.pivot_table(index=0, values=1, aggfunc='mean')

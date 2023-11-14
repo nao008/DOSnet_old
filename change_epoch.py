@@ -26,6 +26,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from tensorflow.random import set_seed
 
 
 parser = argparse.ArgumentParser(description="ML framework")
@@ -136,7 +137,7 @@ def load_data(multi_adsorbate, data_dir):
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
 def create_model(shared_conv, channels):
-
+    set_seed(42)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
