@@ -25,15 +25,15 @@ log = {}
 dropout_vals = [0.0, 0.2, 0.4, 0.6, 0.8]
 dropout_detail_vals = [0.3, 0.34, 0.38, 0.42, 0.46]
 # ファイル名のリスト
-filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
-# filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_detail_vals]
+# filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
+filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_detail_vals]
 
 # 各ファイルからデータを読み込み、データフレームに変換
 df_list = [pd.read_csv(filename, sep=" ", header=None) for filename in filenames]
 
 #各データフレームの名称と色
-labels = [f"dropout:{dropout_val}" for dropout_val in dropout_vals]
-# labels = [f"dropout:{dropout_val}" for dropout_val in dropout_detail_vals]
+# labels = [f"dropout:{dropout_val}" for dropout_val in dropout_vals]
+labels = [f"dropout:{dropout_val}" for dropout_val in dropout_detail_vals]
 colors = ['red', 'blue', 'green', 'yellow', 'purple']
 
 fig, ax = plt.subplots()
@@ -54,10 +54,10 @@ for value in values:
     min_value = nearest_df[1].min()
     max_index = nearest_df[1].idxmax()
     min_index = nearest_df[1].idxmin()
-    log[f"{nearest_df[0][0]}_max:{dropout_vals[max_index]}"] = max_value
-    log[f"{nearest_df[0][0]}_min:{dropout_vals[min_index]}"] = min_value
-    # log[f"{nearest_df[0][0]}_max:{dropout_detail_vals[max_index]}"] = max_value
-    # log[f"{nearest_df[0][0]}_min:{dropout_detail_vals[min_index]}"] = min_value
+    # log[f"{nearest_df[0][0]}_max:{dropout_vals[max_index]}"] = max_value
+    # log[f"{nearest_df[0][0]}_min:{dropout_vals[min_index]}"] = min_value
+    log[f"{nearest_df[0][0]}_max:{dropout_detail_vals[max_index]}"] = max_value
+    log[f"{nearest_df[0][0]}_min:{dropout_detail_vals[min_index]}"] = min_value
     all_nearest_df = pd.concat([all_nearest_df, nearest_df]).reset_index(drop=True)
 
 m = all_nearest_df.pivot_table(index=0, values=1, aggfunc='mean')
@@ -67,7 +67,8 @@ fig, ax = plt.subplots()
 # 散布図のplot
 for i in range(len(all_nearest_df)):
     ax.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(labels)], label=labels[i%len(labels)])
-fig.savefig('resultplot/dropout_scatter.png')
+# fig.savefig('resultplot/dropout_scatter.png')
+fig.savefig('resultplot/dropout_detail_scatter.png')
 # エラーバーの追加
 m.plot(xlim=[-0.2, 6.2], yerr=e)
 
@@ -76,7 +77,7 @@ plt.xlabel('true')
 plt.ylabel('predict')
 print(log)
 plt.tight_layout()
-plt.savefig("resultplot/dropout.png")
-# plt.savefig("resultplot/dropout_detail.png")
+# plt.savefig("resultplot/dropout.png")
+plt.savefig("resultplot/dropout_detail.png")
 plt.show()
 
