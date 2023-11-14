@@ -307,7 +307,8 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]],
                     y_test,
                 ),
-                callbacks=[tensorboard, lr_scheduler],
+                # callbacks=[tensorboard, lr_scheduler],
+                callbacks=[lr_scheduler],
             )
             train_out = model.predict(
                 [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]]
@@ -365,6 +366,8 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
         if args.save_model == 1:
             print("Saving model...")
             model.save(f"models/epoch:{epoch}.h5")
+        
+        del model, train_out, test_out
 
 
 # kfold

@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
+# from scipy import stats
 import argparse
 
 parser = argparse.ArgumentParser(description="result plot")
@@ -65,7 +65,7 @@ e = all_nearest_df.pivot_table(index=0, values=1, aggfunc='sem')
 
 # 散布図のplot
 for i in range(len(all_nearest_df)):
-    ax.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%5], label=labels[i%5])
+    ax.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(labels)], label=labels[i%len(labels)])
 
 # エラーバーの追加
 m.plot(xlim=[-0.2, 6.2], yerr=e)
@@ -75,6 +75,7 @@ plt.xlabel('true')
 plt.ylabel('predict')
 print(log)
 plt.tight_layout()
-plt.savefig("resultplot/dropout_detail.png")
+plt.savefig("resultplot/dropout.png")
+# plt.savefig("resultplot/dropout_detail.png")
 plt.show()
 
