@@ -59,11 +59,12 @@ for value in values:
 m = all_nearest_df.pivot_table(index=0, values=1, aggfunc='mean')
 e = all_nearest_df.pivot_table(index=0, values=1, aggfunc='sem')
 
-list_len = len(seed_vals)
+fig, ax = plt.subplots()
+
 # 散布図のplot
 for i in range(len(all_nearest_df)):
-    ax.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%list_len], label=labels[i%list_len])
-
+    ax.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(seed_vals)], label=labels[i%len(seed_vals)])
+fig.savefig('resultplot/seed_scatter.png')
 # エラーバーの追加
 m.plot(xlim=[-0.2, 6.2], yerr=e)
 # 軸の名前を設定
