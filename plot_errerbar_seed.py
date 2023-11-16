@@ -56,22 +56,35 @@ for value in values:
     log[f"{nearest_df[0][0]}_min:{seed_vals[min_index]}"] = min_value
     all_nearest_df = pd.concat([all_nearest_df, nearest_df]).reset_index(drop=True)
 
-m = all_nearest_df.pivot_table(index=0, values=1, aggfunc='mean')
-e = all_nearest_df.pivot_table(index=0, values=1, aggfunc='sem')
 
-fig, ax = plt.subplots()
+print(log)
 
 # 散布図のplot
+fig1, ax1 = plt.subplots()
 for i in range(len(all_nearest_df)):
-    ax.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(seed_vals)], label=labels[i%len(seed_vals)])
-fig.savefig('resultplot/seed_scatter.png')
-# エラーバーの追加
-m.plot(xlim=[-0.2, 6.2], yerr=e)
+    ax1.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(labels)], label=labels[i%len(labels)])
 # 軸の名前を設定
 plt.xlabel('true')
 plt.ylabel('predict')
-print(log)
 plt.tight_layout()
-plt.savefig("resultplot/seed.png")
-plt.show()
+plt.savefig(f'resultplot/seed_scatter.png')
+plt.show(block=False)
+plt.close()
+
+#エラーバーのplot
+fig2, ax2 = plt.subplots()
+list = []
+for i in range(len(all_nearest_df)):
+    list.append(all_nearest_df[1][i])
+    if i % len(labels) == len(labels)-1:
+        plt.vlines(all_nearest_df[0][i], min(list), max(list), color='black')
+        list = []
+# 軸の名前を設定
+plt.xlabel('true')
+plt.ylabel('predict')
+plt.tight_layout()
+plt.savefig(f"resultplot/seed.png")
+plt.show(block=False)
+plt.close()
+
 
