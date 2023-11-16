@@ -102,6 +102,7 @@ def main():
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets)
 
     print("--- %s seconds ---" % (time.time() - start_time))
+    print(log)
 
 
 def load_data(multi_adsorbate, data_dir):
