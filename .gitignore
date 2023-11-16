@@ -13,5 +13,6 @@ data/*_data
 /lib64/*
 /share/
 .cfg
-test.py
+DOSnet_test.py
 /logs/*
+*.ipynb

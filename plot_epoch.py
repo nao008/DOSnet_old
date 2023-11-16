@@ -19,7 +19,7 @@ for column in df.columns:
     plt.plot(df.index, df[column], marker='o', label=column)
 plt.legend()
 plt.xlabel('epoch')
-plt.ylabel('Value')
+plt.ylabel('Value(eV)')
 plt.title('Trends by number of epochs')
 plt.grid(True)
 plt.savefig("resultplot/epoch.png")

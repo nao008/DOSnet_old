@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
+# from scipy import stats
 import argparse
 
 parser = argparse.ArgumentParser(description="result plot")
@@ -17,24 +17,39 @@ parser.add_argument(
     type=str,
 )
 
+parser.add_argument(
+    #wide or detail
+    "--data_width",
+    default="wide",
+    type=str,
+)
+
 args = parser.parse_args()
+
+#データの幅を選択(広義of詳細)
+data_width = args.data_width
 
 dataname = args.dataname
 alldata = args.data
 log = {}
-seed_vals = [42, 666, 2023, 1, 3]
-list_len = len(seed_vals)
+if data_width == "wide":
+    dropout_vals = [0.0, 0.2, 0.4, 0.6, 0.8]
+elif data_width == "detail":
+    dropout_vals = [0.3, 0.34, 0.38, 0.42, 0.46]
+else:
+    print("data_width is wide or detail")
+    exit()
 # ファイル名のリスト
-filenames = [f"result/{dataname}_seed{seed_val}_predict_{alldata}.txt" for seed_val in seed_vals]
+filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
 
 # 各ファイルからデータを読み込み、データフレームに変換
 df_list = [pd.read_csv(filename, sep=" ", header=None) for filename in filenames]
 
 #各データフレームの名称と色
-labels = [f"seed:{seed_vals}" for seed_vals in seed_vals]
+labels = [f"dropout:{dropout_val}" for dropout_val in dropout_vals]
+
 colors = ['red', 'blue', 'green', 'yellow', 'purple']
 
-fig, ax = plt.subplots()
 # プロットしたい値のリスト
 values = [0, 1, 2, 3, 4, 5, 6]
 # 抽出した全要素をまとめるdf
@@ -52,22 +67,29 @@ for value in values:
     min_value = nearest_df[1].min()
     max_index = nearest_df[1].idxmax()
     min_index = nearest_df[1].idxmin()
-    log[f"{nearest_df[0][0]}_max:{seed_vals[max_index]}"] = max_value
-    log[f"{nearest_df[0][0]}_min:{seed_vals[min_index]}"] = min_value
+    log[f"{nearest_df[0][0]}_max:{dropout_vals[max_index]}"] = max_value
+    log[f"{nearest_df[0][0]}_min:{dropout_vals[min_index]}"] = min_value
     all_nearest_df = pd.concat([all_nearest_df, nearest_df]).reset_index(drop=True)
-
 
 print(log)
 
 # 散布図のplot
 fig1, ax1 = plt.subplots()
+# 凡例用のハンドラとラベルを保存するリスト
+handlers = []
+labels_list = []
 for i in range(len(all_nearest_df)):
-    ax1.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(labels)], label=labels[i%len(labels)])
-# 軸の名前を設定
-plt.xlabel('true')
-plt.ylabel('predict')
+    scatter = ax1.scatter(all_nearest_df[0][i], all_nearest_df[1][i], color=colors[i%len(labels)], label=labels[i%len(labels)])
+    # 同じラベルが既にリストに存在しない場合に、ハンドラとラベルを追加
+    if labels[i%len(labels)] not in labels_list:
+        handlers.append(scatter)
+        labels_list.append(labels[i%len(labels)])
+plt.legend(handles=handlers, labels=labels_list)
+plt.xlabel('true(eV)')
+plt.ylabel('predict(eV)')
+plt.grid(True)
 plt.tight_layout()
-plt.savefig(f'resultplot/seed_scatter.png')
+plt.savefig(f'resultplot/dropout{data_width}_scatter.png')
 plt.show(block=False)
 plt.close()
 
@@ -80,11 +102,11 @@ for i in range(len(all_nearest_df)):
         plt.vlines(all_nearest_df[0][i], min(list), max(list), color='black')
         list = []
 # 軸の名前を設定
-plt.xlabel('true')
-plt.ylabel('predict')
+plt.xlabel('true(eV)')
+plt.ylabel('predict(eV)')
+plt.grid(True)
 plt.tight_layout()
-plt.savefig(f"resultplot/seed.png")
+plt.savefig(f"resultplot/dropout{data_width}.png")
 plt.show(block=False)
 plt.close()
-
 
