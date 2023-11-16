@@ -37,6 +37,7 @@ axx = fig.add_subplot(gs[0, :3], sharex=ax)
 axy = fig.add_subplot(gs[1:4, 3], sharey=ax)
 
 ax.scatter(x, y, s=10)
+ax.grid()
 ax.plot(x, intercept + slope*x, 'r', label='y={:.2f}x+{:.2f}'.format(slope,intercept))
 
 axx.hist(x, bins=100, alpha=0.5)
