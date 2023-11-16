@@ -302,7 +302,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
     tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
 
-    for switch in range(change_num)
+    for switch in range(change_num):
         ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
         if args.multi_adsorbate == 0:
             if args.load_model == 0:
