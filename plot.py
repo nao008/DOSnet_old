@@ -45,8 +45,8 @@ axy.hist(y, bins=100, orientation='horizontal', alpha=0.5)
 axx.axis('off')
 axy.axis('off')
 
-ax.set_xlabel("ture")
-ax.set_ylabel("predict")
+ax.set_xlabel("ture(eV)")
+ax.set_ylabel("predict(eV)")
 
 plt.savefig(f"resultplot/{dataname}_{alldata}.png")
 plt.show()
