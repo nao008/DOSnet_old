@@ -88,6 +88,8 @@ for i in range(len(all_nearest_df)):
 # 軸の名前を設定
 plt.xlabel('true(eV)')
 plt.ylabel('predict(eV)')
+x = np.linspace(*plt.xlim())  # x軸の範囲を取得
+plt.plot(x, x, color='red', linewidth=0.5)  # y=xのグラフを描画
 plt.grid(True)
 plt.tight_layout()
 plt.savefig(f"resultplot/seed.png")
