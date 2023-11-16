@@ -16,3 +16,4 @@ data/*_data
 DOSnet_test.py
 /logs/*
 *.ipynb
+/backups/*
