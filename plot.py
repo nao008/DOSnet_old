@@ -16,12 +16,22 @@ parser.add_argument(
     type=str,
 )
 
+parser.add_argument(
+    "--model",
+    default="",
+    type=str,
+)
+
 args = parser.parse_args()
 
 dataname = args.dataname
 alldata = args.data
+modelname = args.model
 
-data = np.loadtxt(f'result/{dataname}_predict_{alldata}.txt')
+if modelname == "":
+    data = np.loadtxt(f'result/{dataname}_predict_{alldata}.txt')
+else:
+    data = np.loadtxt(f'result/{dataname}_{modelname}_predict_{alldata}.txt')
 
 x = data[:, 0]
 y = data[:, 1]
@@ -45,9 +55,11 @@ axy.hist(y, bins=100, orientation='horizontal', alpha=0.5)
 
 axx.axis('off')
 axy.axis('off')
-
+ax.set_title(f"{dataname}_{alldata}_{modelname}")
 ax.set_xlabel("ture(eV)")
 ax.set_ylabel("predict(eV)")
-
-plt.savefig(f"resultplot/{dataname}_{alldata}.png")
+if modelname == "":
+    plt.savefig(f"resultplot/{dataname}_{alldata}.png")
+else:
+    plt.savefig(f"resultplot/{dataname}_{alldata}_{modelname}.png")
 plt.show()
