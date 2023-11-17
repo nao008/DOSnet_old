@@ -1,6 +1,6 @@
 #seed値の設定を行い、初期値での予測値を確認しランダム性を排除
 
-
+import os
 import numpy as np
 import pickle
 import time
@@ -34,10 +34,24 @@ from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from tensorflow.random import set_seed
 
-def reset_random_seed(seed_value=42):
-    np.random.seed(seed_value)
-    tf.random.set_seed(seed_value)
-    random.seed(seed_value)
+# def reset_random_seed(seed_value=42):
+#     np.random.seed(seed_value)
+#     tf.random.set_seed(seed_value)
+#     random.seed(seed_value)
+
+def reset_random_seed(seed=42):
+    os.environ['PYTHONHASHSEED'] = '0'
+    os.environ['TF_DETERMINISTIC_OPS'] = 'true'
+    os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
+    tf.random.set_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=32, inter_op_parallelism_threads=32)
+    tf.compat.v1.set_random_seed(seed)
+    sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
+    tf.keras.utils.set_random_seed(1)
+    tf.config.experimental.enable_op_determinism()
+
 
 parser = argparse.ArgumentParser(description="ML framework")
 
