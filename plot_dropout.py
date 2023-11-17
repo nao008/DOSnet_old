@@ -18,7 +18,7 @@ parser.add_argument(
 
 parser.add_argument(
     #wide or detail
-    "--data_width",
+    "--dropout_width",
     default="wide",
     type=str,
 )
@@ -26,7 +26,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 #データの幅を選択(広義of詳細)
-data_width = args.data_width
+data_width = args.dropout_width
 
 dataname = args.dataname
 alldata = args.data
@@ -39,7 +39,7 @@ else:
     print("data_width is wide or detail")
     exit()
 # ファイル名のリスト
-filenames = [f"result/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
+filenames = [f"result/dropout/{dataname}_dropout{dropout_val}_predict_{alldata}.txt" for dropout_val in dropout_vals]
 
 # 各ファイルからデータを読み込み、データフレームに変換
 df_list = [pd.read_csv(filename, sep=" ", header=None) for filename in filenames]
