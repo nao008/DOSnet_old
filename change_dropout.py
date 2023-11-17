@@ -126,6 +126,8 @@ def main():
 
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
+    # float32型のデータをfloat型に変換
+    log = {k: float(v) for k, v in log.items()}
     with(open(f"result/dropout/{args.data_dir}_{args.dropout_width}_log.txt", "w")) as f:
         f.write(json.dumps(log))
 
