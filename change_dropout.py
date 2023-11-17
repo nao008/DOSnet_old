@@ -4,6 +4,10 @@ import pickle
 import time
 import argparse
 import sys
+import tensorflow as tf
+import random
+import os
+import json
 
 # keras/sklearn libraries
 import keras
@@ -57,7 +61,7 @@ parser.add_argument(
     "--epochs", default=60, type=int, help="number of total epochs to run (default:60)"
 )
 parser.add_argument(
-    "--batch_size", default=32, type=int, help="batch size (default:32)"
+    "--batch_size", default=128, type=int, help="batch size (default:32)"
 )
 parser.add_argument(
     "--channels", default=9, type=int, help="number of channels (default: 9)"
@@ -80,7 +84,25 @@ parser.add_argument(
     type=int,
     help="path to file containing DOS and targets (default: 0)",
 )
+parser.add_argument(
+    "--dropout_width",
+    default="wide",
+    type=str,
+)
 args = parser.parse_args(sys.argv[1:])
+
+def reset_random_seed(seed=42):
+    os.environ['PYTHONHASHSEED'] = '0'
+    os.environ['TF_DETERMINISTIC_OPS'] = 'true'
+    os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
+    tf.random.set_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=32, inter_op_parallelism_threads=32)
+    tf.compat.v1.set_random_seed(seed)
+    sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
+    tf.keras.utils.set_random_seed(1)
+    tf.config.experimental.enable_op_determinism()
 
 log = {}
 def main():
@@ -104,6 +126,8 @@ def main():
 
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
+    with(open(f"result/dropout/{args.data_dir}_{args.dropout_width}_log.txt", "w")) as f:
+        f.write(json.dumps(log))
 
 
 def load_data(multi_adsorbate, data_dir):
@@ -247,6 +271,8 @@ def decay_schedule(epoch, lr):
         lr = 0.00001
     return lr
 
+def are_lists_equal(list1, list2):
+    return np.array_equal(list1, list2)
 
 # regular training
 def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
@@ -285,11 +311,88 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
     tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
 
     ### define dropoout
-    Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
-    Dropouts_detail = [0.3, 0.34, 0.38, 0.42, 0.46]
-    for dropout in Dropouts_detail:
-
-        ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
+    dropout_width = args.dropout_width
+    if dropout_width == "wide":
+        Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
+    elif dropout_width == "detail":
+        Dropouts = [0.3, 0.34, 0.38, 0.42, 0.46]
+    else:
+        print("dropout_width is not defined")
+        sys.exit()
+    
+    for count, dropout in enumerate(Dropouts):
+        if count == 0:#初回のみepoch0で実行し再現性の確認
+            results = []
+            for i in range(2):
+                reset_random_seed()
+                if args.multi_adsorbate == 0:
+                    if args.load_model == 0:
+                        model = create_model(shared_conv, args.channels, dropout)
+                        model.compile(
+                            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                        )
+                    elif args.load_model == 1:
+                        print("Loading model...")
+                        model = load_model(f"models/dropout_{dropout}_saved.h5", compile=False)
+                        model.compile(
+                            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                        )
+                    model.summary()
+                    model.fit(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]],
+                        y_train,
+                        batch_size=args.batch_size,
+                        epochs=0,
+                        validation_data=(
+                            [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]],
+                            y_test,
+                        ),
+                        callbacks=[tensorboard, lr_scheduler],
+                    )
+                    train_out = model.predict(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]]
+                    )
+                    train_out = train_out.reshape(len(train_out))
+                    test_out = model.predict(
+                        [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]]
+                    )
+                    test_out = test_out.reshape(len(test_out))
+                    result = [train_out, test_out]
+                    results.append(result)
+                    del model, train_out, test_out
+                elif args.multi_adsorbate == 1:
+                    model = create_model_combined(shared_conv, args.channels)
+                    model.compile(
+                        loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                    )
+                    model.summary()
+                    model.fit(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train],
+                        y_train,
+                        batch_size=args.batch_size,
+                        epochs=0,
+                        validation_data=(
+                            [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test],
+                            y_test,
+                        ),
+                        callbacks=[tensorboard, lr_scheduler],
+                    )
+                    train_out = model.predict(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train]
+                    )
+                    train_out = train_out.reshape(len(train_out))
+                    test_out = model.predict(
+                        [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test]
+                    )
+                    test_out = test_out.reshape(len(test_out))
+                    result = [train_out, test_out]
+                    results.append(result)
+                    del model, train_out, test_out
+            if are_lists_equal(results[0], results[1]):
+                print("result is not same")
+                sys.exit()
+        #再現性が確保されると以下の処理を実行
+        reset_random_seed()
         if args.multi_adsorbate == 0:
             if args.load_model == 0:
                 model = create_model(shared_conv, args.channels, dropout)
@@ -298,7 +401,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 )
             elif args.load_model == 1:
                 print("Loading model...")
-                model = load_model("models/DOSnet_saved.h5", compile=False)
+                model = load_model(f"models/dropout_{dropout}_saved.h5", compile=False)
                 model.compile(
                     loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                 )
@@ -364,9 +467,9 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
         #入力データ名を取得
         data_dir = args.data_dir
         
-        with open(f"result/{data_dir}_dropout{dropout}_predict_train.txt", "w") as f:
+        with open(f"result/dropout/{data_dir}_dropout{dropout}_predict_train.txt", "w") as f:
             np.savetxt(f, np.stack((y_train, train_out), axis=-1))
-        with open(f"result/{data_dir}_dropout{dropout}_predict_test.txt", "w") as f:
+        with open(f"result/dropout/{data_dir}_dropout{dropout}_predict_test.txt", "w") as f:
             np.savetxt(f, np.stack((y_test, test_out), axis=-1))
 
         if args.save_model == 1:
