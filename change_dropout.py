@@ -359,9 +359,9 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     test_out = test_out.reshape(len(test_out))
                     result = [train_out, test_out]
                     results.append(result)
-                    with open(f"result/dropout/{data_dir}_initial_value{i}_train.txt", "w") as f:
+                    with open(f"result/dropout/{args.data_dir}_initial_value{i}_train.txt", "w") as f:
                         np.savetxt(f, np.stack((y_train, train_out), axis=-1))
-                    with open(f"result/dropout/{data_dir}_initial_value{i}_train.txt", "w") as f:
+                    with open(f"result/dropout/{args.data_dir}_initial_value{i}_test.txt", "w") as f:
                         np.savetxt(f, np.stack((y_test, test_out), axis=-1))
                     del model, train_out, test_out
                 elif args.multi_adsorbate == 1:
