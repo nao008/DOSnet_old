@@ -2,10 +2,11 @@
 *_predict_test.txt
 *_predict_train.txt
 *_data.tar.gz
-data/*_data
-/result/*.txt
-/resultplot/*.png
-/models/*.h5
+data/*
+*.txt
+!requirements.txt
+*.png
+*.h5
 /venv/
 /test/*
 /bin/
