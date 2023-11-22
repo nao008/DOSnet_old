@@ -16,5 +16,6 @@ data/*
 .cfg
 DOSnet_test.py
 /logs/*
-*.ipynb
+test.ipynb
+test_plot.ipynb
 /backups/*
