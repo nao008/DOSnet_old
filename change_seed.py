@@ -1,4 +1,5 @@
-# ドロップアウトの変更による精度の差
+# seedの変更による精度の差
+
 import numpy as np
 import pickle
 import time
