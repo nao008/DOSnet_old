@@ -19,3 +19,4 @@ DOSnet_test.py
 test.ipynb
 test_plot.ipynb
 /backups/*
+*.dio
