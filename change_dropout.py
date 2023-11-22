@@ -104,10 +104,11 @@ def reset_random_seed(seed=42):
     tf.keras.utils.set_random_seed(1)
     tf.config.experimental.enable_op_determinism()
 
-log = {}
+
 def main():
     start_time = time.time()
     datadir = f"data/{args.data_dir}"
+    log = {}
 
     # load data (replace with your own depending on the data format)
     # Data format for x_surface_dos and x_adsorbate_dos is a numpy array with shape: (A, B, C) where A is number of samples, B is length of DOS file (2000), C is number of channels.
@@ -120,7 +121,7 @@ def main():
         args.seed = np.random.randint(1, 1e6)
 
     if args.run_mode == 0:
-        run_training(args, x_surface_dos, x_adsorbate_dos, y_targets)
+        run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets)
 
@@ -277,7 +278,7 @@ def are_lists_equal(list1, list2):
     return np.array_equal(list1, list2)
 
 # regular training
-def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
+def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 
     ###Split data into train and test
     if args.multi_adsorbate == 0:
