@@ -166,7 +166,7 @@ def load_data(multi_adsorbate, data_dir):
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
 def create_model(shared_conv, channels, dropout):
     
-    set_seed(42)
+    # set_seed(42)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
@@ -398,6 +398,9 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
             if are_lists_equal(results[0], results[1]):
                 print("result is not same")
                 sys.exit()
+            else:
+                #再現性が確保されたと英語で表示
+                print("result is same")
         #再現性が確保されると以下の処理を実行
         reset_random_seed()
         if args.multi_adsorbate == 0:
