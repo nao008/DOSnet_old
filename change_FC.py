@@ -1,8 +1,13 @@
+# ドロップアウトの変更による精度の差
 import numpy as np
 import pickle
 import time
 import argparse
 import sys
+import tensorflow as tf
+import random
+import os
+import json
 
 # keras/sklearn libraries
 import keras
@@ -19,6 +24,7 @@ from keras.layers import (
     AveragePooling1D,
     Flatten,
     Concatenate,
+    Add,
 )
 from keras import backend
 from keras.callbacks import TensorBoard, LearningRateScheduler
@@ -26,6 +32,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from tensorflow.random import set_seed
 from keras.regularizers import l1
 
 
@@ -56,7 +63,7 @@ parser.add_argument(
     "--epochs", default=60, type=int, help="number of total epochs to run (default:60)"
 )
 parser.add_argument(
-    "--batch_size", default=32, type=int, help="batch size (default:32)"
+    "--batch_size", default=128, type=int, help="batch size (default:32)"
 )
 parser.add_argument(
     "--channels", default=9, type=int, help="number of channels (default: 9)"
@@ -79,12 +86,27 @@ parser.add_argument(
     type=int,
     help="path to file containing DOS and targets (default: 0)",
 )
+
 args = parser.parse_args(sys.argv[1:])
 
-log = {}
+def reset_random_seed(seed=42):
+    os.environ['PYTHONHASHSEED'] = '0'
+    os.environ['TF_DETERMINISTIC_OPS'] = 'true'
+    os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
+    tf.random.set_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=32, inter_op_parallelism_threads=32)
+    tf.compat.v1.set_random_seed(seed)
+    sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
+    tf.keras.utils.set_random_seed(1)
+    tf.config.experimental.enable_op_determinism()
+
+
 def main():
     start_time = time.time()
     datadir = f"data/{args.data_dir}"
+    log = {}
 
     # load data (replace with your own depending on the data format)
     # Data format for x_surface_dos and x_adsorbate_dos is a numpy array with shape: (A, B, C) where A is number of samples, B is length of DOS file (2000), C is number of channels.
@@ -97,12 +119,16 @@ def main():
         args.seed = np.random.randint(1, 1e6)
 
     if args.run_mode == 0:
-        run_training(args, x_surface_dos, x_adsorbate_dos, y_targets)
+        run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
-        run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets)
-
+        print("no")
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
+    # float32型のデータをfloat型に変換
+    log = {k: float(v) for k, v in log.items()}
+    with(open(f"result/fc/{args.data_dir}_fc_log.txt", "w")) as f:
+        f.write(json.dumps(log))
+
 
 def load_data(multi_adsorbate, data_dir):
     ###load data containing: (1) dos of surface, (2) adsorption energy(target), (3) dos of adsorbate in gas phase (for multi-adsorbate)
@@ -132,13 +158,14 @@ def load_data(multi_adsorbate, data_dir):
 
     return surface_dos, x_adsorbate_dos, targets
 
-
 #試行回数
 change_num = 5
 #1:層を増やす
 #2:ノードを増やす
 #3:活性化関数をすべてreluに
 #4:全層に正則化
+###Creates the ML model with keras
+###This is the overall model where all 3 adsorption sites are fitted at the same time
 def create_model(shared_conv, channels, switch):
 
     ###Each input represents one out of three possible bonding atoms
@@ -209,7 +236,6 @@ def create_model_combined(shared_conv, channels):
     model = Model(input=[input1, input2, input3, input4], output=out)
     return model
 
-
 ###This sub-model is the convolutional network for the DOS
 ###Uses the same model for each atom input channel
 ###Input is a 2000 length DOS data series
@@ -266,9 +292,11 @@ def decay_schedule(epoch, lr):
         lr = 0.00001
     return lr
 
+def are_lists_equal(list1, list2):
+    return np.array_equal(list1, list2)
 
 # regular training
-def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
+def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 
     ###Split data into train and test
     if args.multi_adsorbate == 0:
@@ -299,12 +327,92 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
         )
 
     ###call and fit model
-    shared_conv = dos_featurizer(args.channels)
-    lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
-    tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
-
     for switch in range(change_num):
-        ###FOr testing purposes, a model where 3 adsorption sites fitted simultaneously and 3 separately are done by comparison
+        shared_conv = dos_featurizer(args.channels)
+        lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
+        tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
+        if switch == 0:#初回のみepoch0で実行し再現性の確認
+            results = []
+            for i in range(2):
+                reset_random_seed()
+                if args.multi_adsorbate == 0:
+                    if args.load_model == 0:
+                        model = create_model(shared_conv, args.channels, switch)
+                        model.compile(
+                            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                        )
+                    elif args.load_model == 1:
+                        print("Loading model...")
+                        model = load_model(f"models/fc:{change_num}.h5", compile=False)
+                        model.compile(
+                            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                        )
+                    model.summary()
+                    model.fit(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]],
+                        y_train,
+                        batch_size=args.batch_size,
+                        epochs=0,
+                        validation_data=(
+                            [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]],
+                            y_test,
+                        ),
+                        callbacks=[tensorboard, lr_scheduler],
+                    )
+                    train_out = model.predict(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]]
+                    )
+                    train_out = train_out.reshape(len(train_out))
+                    test_out = model.predict(
+                        [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]]
+                    )
+                    test_out = test_out.reshape(len(test_out))
+                    result = [train_out, test_out]
+                    results.append(result)
+                    with open(f"result/fc/{args.data_dir}_initial_value{i}_train.txt", "w") as f:
+                        np.savetxt(f, np.stack((y_train, train_out), axis=-1))
+                    with open(f"result/fc/{args.data_dir}_initial_value{i}_test.txt", "w") as f:
+                        np.savetxt(f, np.stack((y_test, test_out), axis=-1))
+                    del model, train_out, test_out
+                elif args.multi_adsorbate == 1:
+                    model = create_model_combined(shared_conv, args.channels)
+                    model.compile(
+                        loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                    )
+                    model.summary()
+                    model.fit(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train],
+                        y_train,
+                        batch_size=args.batch_size,
+                        epochs=0,
+                        validation_data=(
+                            [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test],
+                            y_test,
+                        ),
+                        callbacks=[tensorboard, lr_scheduler],
+                    )
+                    train_out = model.predict(
+                        [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27], ads_train]
+                    )
+                    train_out = train_out.reshape(len(train_out))
+                    test_out = model.predict(
+                        [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27], ads_test]
+                    )
+                    test_out = test_out.reshape(len(test_out))
+                    result = [train_out, test_out]
+                    results.append(result)
+                    del model, train_out, test_out
+            if are_lists_equal(results[0], results[1]):
+                print("#########################################")
+                print("result is not same")
+                print("#########################################")
+                sys.exit()
+            else:
+                print("#########################################")
+                print("result is same")
+                print("#########################################")
+        #再現性が確保されると以下の処理を実行
+        reset_random_seed()
         if args.multi_adsorbate == 0:
             if args.load_model == 0:
                 model = create_model(shared_conv, args.channels, switch)
@@ -313,7 +421,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 )
             elif args.load_model == 1:
                 print("Loading model...")
-                model = load_model(f"models/change_FC{switch}.h5", compile=False)
+                model = load_model(f"models/fc:{change_num}.h5", compile=False)
                 model.compile(
                     loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                 )
@@ -327,7 +435,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     [x_test[:, :, 0:9], x_test[:, :, 9:18], x_test[:, :, 18:27]],
                     y_test,
                 ),
-                callbacks=[lr_scheduler],
+                callbacks=[tensorboard, lr_scheduler],
             )
             train_out = model.predict(
                 [x_train[:, :, 0:9], x_train[:, :, 9:18], x_train[:, :, 18:27]]
@@ -365,147 +473,28 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets):
             test_out = test_out.reshape(len(test_out))
 
         ###this is just to write the results to a file
+        print("fc: ",switch)
         print("train MAE: ", mean_absolute_error(y_train, train_out))
         print("train RMSE: ", mean_squared_error(y_train, train_out) ** (0.5))
         print("test MAE: ", mean_absolute_error(y_test, test_out))
         print("test RMSE: ", mean_squared_error(y_test, test_out) ** (0.5))
 
-        log[f"model{switch}_train_mae"] = [mean_absolute_error(y_train, train_out)]
-        log[f"model{switch}_train_rmse"] = [mean_squared_error(y_train, train_out) ** (0.5)]
-        log[f"model{switch}_test_mae"] = [mean_absolute_error(y_test, test_out)]
-        log[f"model{switch}_test_rmse"] = [mean_squared_error(y_test, test_out) ** (0.5)]
+        log[f"{switch}_train_mae"] = mean_absolute_error(y_train, train_out)
+        log[f"{switch}_train_rmse"] = mean_squared_error(y_train, train_out) ** (0.5)
+        log[f"{switch}_test_mae"] = mean_absolute_error(y_test, test_out)
+        log[f"{switch}_test_rmse"] = mean_squared_error(y_test, test_out) ** (0.5)
+
         #入力データ名を取得
         data_dir = args.data_dir
         
-        with open(f"result/{data_dir}_FC{switch}_predict_train.txt", "w") as f:
+        with open(f"result/fc/{data_dir}_fc{switch}_predict_train.txt", "w") as f:
             np.savetxt(f, np.stack((y_train, train_out), axis=-1))
-        with open(f"result/{data_dir}_FC{switch}_predict_test.txt", "w") as f:
+        with open(f"result/fc/{data_dir}_fc{switch}_predict_test.txt", "w") as f:
             np.savetxt(f, np.stack((y_test, test_out), axis=-1))
 
         if args.save_model == 1:
             print("Saving model...")
-            model.save(f"models/change_FC{switch}.h5")
-
-        del model, train_out, test_out
-
-
-# kfold
-def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets):
-    cvscores = []
-    count = 0
-    kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
-
-    for train, test in kfold.split(x_surface_dos, y_targets):
-
-        scaler_CV = StandardScaler()
-        x_surface_dos[train, :, :] = scaler_CV.fit_transform(
-            x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
-        ).reshape(x_surface_dos[train, :, :].shape)
-        x_surface_dos[test, :, :] = scaler_CV.transform(
-            x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
-        ).reshape(x_surface_dos[test, :, :].shape)
-        if args.multi_adsorbate == 1:
-            x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
-                x_adsorbate_dos[train, :, :].reshape(
-                    -1, x_adsorbate_dos[train, :, :].shape[-1]
-                )
-            ).reshape(x_adsorbate_dos[train, :, :].shape)
-            x_adsorbate_dos[test, :, :] = scaler_CV.transform(
-                x_adsorbate_dos[test, :, :].reshape(
-                    -1, x_adsorbate_dos[test, :, :].shape[-1]
-                )
-            ).reshape(x_adsorbate_dos[test, :, :].shape)
-
-        keras.backend.clear_session()
-        shared_conv = dos_featurizer(args.channels)
-        lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
-        if args.multi_adsorbate == 0:
-            model_CV = create_model(shared_conv, args.channels)
-            model_CV.compile(
-                loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-            )
-            model_CV.fit(
-                [
-                    x_surface_dos[train, :, 0:9],
-                    x_surface_dos[train, :, 9:18],
-                    x_surface_dos[train, :, 18:27],
-                ],
-                y_targets[train],
-                batch_size=args.batch_size,
-                epochs=args.epochs,
-                verbose=0,
-                callbacks=[lr_scheduler],
-            )
-            scores = model_CV.evaluate(
-                [
-                    x_surface_dos[test, :, 0:9],
-                    x_surface_dos[test, :, 9:18],
-                    x_surface_dos[test, :, 18:27],
-                ],
-                y_targets[test],
-                verbose=0,
-            )
-            train_out_CV_temp = model_CV.predict(
-                [
-                    x_surface_dos[test, :, 0:9],
-                    x_surface_dos[test, :, 9:18],
-                    x_surface_dos[test, :, 18:27],
-                ]
-            )
-            train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-        elif args.multi_adsorbate == 1:
-            model_CV = create_model_combined(shared_conv, args.channels)
-            model_CV.compile(
-                loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-            )
-            model_CV.fit(
-                [
-                    x_surface_dos[train, :, 0:9],
-                    x_surface_dos[train, :, 9:18],
-                    x_surface_dos[train, :, 18:27],
-                    x_adsorbate_dos[train, :, :],
-                ],
-                y_targets[train],
-                batch_size=args.batch_size,
-                epochs=args.epochs,
-                verbose=0,
-                callbacks=[lr_scheduler],
-            )
-            scores = model_CV.evaluate(
-                [
-                    x_surface_dos[test, :, 0:9],
-                    x_surface_dos[test, :, 9:18],
-                    x_surface_dos[test, :, 18:27],
-                    x_adsorbate_dos[test, :, :],
-                ],
-                y_targets[test],
-                verbose=0,
-            )
-            train_out_CV_temp = model_CV.predict(
-                [
-                    x_surface_dos[test, :, 0:9],
-                    x_surface_dos[test, :, 9:18],
-                    x_surface_dos[test, :, 18:27],
-                    x_adsorbate_dos[test, :, :],
-                ]
-            )
-            train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-        print((model_CV.metrics_names[1], scores[1]))
-        cvscores.append(scores[1])
-        if count == 0:
-            train_out_CV = train_out_CV_temp
-            test_y_CV = y_targets[test]
-            test_index = test
-        elif count > 0:
-            train_out_CV = np.append(train_out_CV, train_out_CV_temp)
-            test_y_CV = np.append(test_y_CV, y_targets[test])
-            test_index = np.append(test_index, test)
-        count = count + 1
-    print((np.mean(cvscores), np.std(cvscores)))
-    print(len(test_y_CV))
-    print(len(train_out_CV))
-    with open("result/CV_predict.txt", "w") as f:
-        np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
+            model.save(f"models/fc:{change_num}.h5")
 
 
 if __name__ == "__main__":
