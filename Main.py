@@ -394,6 +394,7 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets):
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
+            model_CV.summary()
             model_CV.fit(
                 [
                     x_surface_dos[train, :, 0:9],
@@ -403,9 +404,10 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 y_targets[train],
                 batch_size=args.batch_size,
                 epochs=args.epochs,
-                verbose=0,
+                # verbose=0,
                 callbacks=[lr_scheduler],
             )
+            print("#########################")
             scores = model_CV.evaluate(
                 [
                     x_surface_dos[test, :, 0:9],
@@ -413,7 +415,7 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     x_surface_dos[test, :, 18:27],
                 ],
                 y_targets[test],
-                verbose=0,
+                # verbose=0,
             )
             train_out_CV_temp = model_CV.predict(
                 [
