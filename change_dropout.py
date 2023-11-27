@@ -596,6 +596,10 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             print("result is same")
         else:
             print("result is not same")
+            print(results[0])
+            print(results[1])
+            print(results[0].shape)
+            print(results[1].shape)
             sys.exit()
     else:
         print("results list does not have enough elements")
