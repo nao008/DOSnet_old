@@ -502,6 +502,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
         x_surface_dos[test, :, :] = scaler_CV.transform(
             x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
         ).reshape(x_surface_dos[test, :, :].shape)
+        print("#####################################")
         print(x_surface_dos[test, :, :])
         if args.multi_adsorbate == 1:
             x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
