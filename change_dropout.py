@@ -551,6 +551,8 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     ]
                 )
                 train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+                print(train_out_CV_temp)
+                print(train_out_CV_temp.shape)
                 results.append(train_out_CV_temp)
             elif args.multi_adsorbate == 1:
                 model_CV = create_model_combined(shared_conv, args.channels)
