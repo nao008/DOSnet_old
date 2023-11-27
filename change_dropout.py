@@ -179,7 +179,7 @@ def create_model(shared_conv, channels, dropout):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(dropout)(convmerge)
+    convmerge = Dropout(dropout, seed=42)(convmerge)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
