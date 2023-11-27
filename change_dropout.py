@@ -553,6 +553,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             )
             train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
             results[i] = train_out_CV_temp
+            del model_CV, train_out_CV_temp
         elif args.multi_adsorbate == 1:
             model_CV = create_model_combined(shared_conv, args.channels)
             model_CV.compile(
@@ -591,6 +592,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             )
             train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
             results[i] = train_out_CV_temp
+            del model_CV, train_out_CV_temp
     if results[0] is not None and results[1] is not None:
         if are_lists_equal(results[0], results[1]):
             print("result is same")
