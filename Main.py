@@ -407,7 +407,6 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 # verbose=0,
                 callbacks=[lr_scheduler],
             )
-            print("#########################")
             scores = model_CV.evaluate(
                 [
                     x_surface_dos[test, :, 0:9],
