@@ -523,6 +523,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
+            reset_random_seed()
             model_CV.fit(
                 [
                     x_surface_dos[train, :, 0:9],
