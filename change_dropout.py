@@ -493,7 +493,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
     for i in range(2):
         reset_random_seed()
         kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
-        splits = kfold.split(x_surface_dos, y_targets)
+        splits = list(kfold.split(x_surface_dos, y_targets))
         train, test = splits[0]
 
         scaler_CV = StandardScaler()
