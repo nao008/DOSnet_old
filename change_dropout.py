@@ -495,7 +495,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
         kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
         splits = list(kfold.split(x_surface_dos, y_targets))
         train, test = splits[0]
-
+        print(train,test)
         scaler_CV = StandardScaler()
         x_surface_dos[train, :, :] = scaler_CV.fit_transform(
             x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
