@@ -489,7 +489,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 
 #再現性の確認用run_kfold
 def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
-    results = []
+    results = [None, None]
     for i in range(2):
         reset_random_seed()
         kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
@@ -590,12 +590,16 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 )
                 train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
                 results.append(train_out_CV_temp)
-    if are_lists_equal(results[0], results[1]):
-        print("result is same")
+    if results[0] is not None and results[1] is not None:
+        if are_lists_equal(results[0], results[1]):
+            print("result is same")
+        else:
+            print("result is not same")
+            sys.exit()
     else:
-        print("result is not same")
+        print("results list does not have enough elements")
         sys.exit()
-
+    
 # kfold
 def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
     reset_random_seed()
