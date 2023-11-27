@@ -551,6 +551,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     ]
                 )
                 train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+                print("###################################################")
                 print(train_out_CV_temp)
                 print(type(train_out_CV_temp))
                 print(train_out_CV_temp.shape)
