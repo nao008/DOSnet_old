@@ -530,7 +530,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     ],
                     y_targets[train],
                     batch_size=args.batch_size,
-                    epochs=args.epochs,
+                    epochs=0,
                     verbose=0,
                     callbacks=[lr_scheduler],
                 )
@@ -566,7 +566,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     ],
                     y_targets[train],
                     batch_size=args.batch_size,
-                    epochs=args.epochs,
+                    epochs=0,
                     verbose=0,
                     callbacks=[lr_scheduler],
                 )
