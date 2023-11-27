@@ -491,9 +491,10 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
     results = [None, None]
     results_kari = []
+    results_kari_kari = []
     for i in range(2):
         reset_random_seed()
-        kfold = KFold(n_splits=5, shuffle=False)
+        kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
         splits = list(kfold.split(x_surface_dos, y_targets))
         train, test = splits[0]
         scaler_CV = StandardScaler()
@@ -503,6 +504,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
         x_surface_dos[test, :, :] = scaler_CV.transform(
             x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
         ).reshape(x_surface_dos[test, :, :].shape)
+        results_kari_kari.append(x_surface_dos[test, :, :])
         if args.multi_adsorbate == 1:
             x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
                 x_adsorbate_dos[train, :, :].reshape(
@@ -595,10 +597,14 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
             results[i] = train_out_CV_temp
             del model_CV, train_out_CV_temp
-    if are_lists_equal(results_kari[0], results_kari[1]):
-        print("same!")
+    if are_lists_equal(results_kari_kari[0], results_kari_kari[1]):
+        print("karikarisame!")
     else:
-        print("not same!")
+        print("karikari not same!")
+    if are_lists_equal(results_kari[0], results_kari[1]):
+        print("kari same!")
+    else:
+        print("kari not same!")
     
     if results[0] is not None and results[1] is not None:
         if are_lists_equal(results[0], results[1]):
