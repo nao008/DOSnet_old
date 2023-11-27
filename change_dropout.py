@@ -493,7 +493,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
     results_kari = []
     for i in range(2):
         reset_random_seed()
-        kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
+        kfold = KFold(n_splits=5, shuffle=False, random_state=args.seed)
         splits = list(kfold.split(x_surface_dos, y_targets))
         train, test = splits[0]
         scaler_CV = StandardScaler()
@@ -523,7 +523,6 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
-            reset_random_seed()
             model_CV.fit(
                 [
                     x_surface_dos[train, :, 0:9],
