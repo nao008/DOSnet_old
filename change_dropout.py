@@ -91,7 +91,7 @@ parser.add_argument(
 )
 args = parser.parse_args(sys.argv[1:])
 
-def reset_random_seed(seed=42):
+def reset_random_seed(seed=args.seed):
     os.environ['PYTHONHASHSEED'] = '0'
     os.environ['TF_DETERMINISTIC_OPS'] = 'true'
     os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
@@ -125,10 +125,10 @@ def main():
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
         mode = "kfold"
-        # kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets)
         kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
-
+    elif args.run_mode == 2:
+        kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets)
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
     # float32型のデータをfloat型に変換
@@ -170,7 +170,7 @@ def load_data(multi_adsorbate, data_dir):
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
 def create_model(shared_conv, channels, dropout):
     
-    set_seed(42)
+    set_seed(args.seed)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
@@ -182,7 +182,7 @@ def create_model(shared_conv, channels, dropout):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(dropout, seed=42)(convmerge)
+    convmerge = Dropout(dropout, seed=args.seed)(convmerge)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
@@ -492,10 +492,15 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 
 #再現性の確認用run_kfoldの結果生成
 def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
+    #seedの固定
     reset_random_seed()
+    #kfoldの設定
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
+    #kfoldの分割
     splits = list(kfold.split(x_surface_dos, y_targets))
+    #trainとtestに分割
     train, test = splits[0]
+    #標準化
     scaler_CV = StandardScaler()
     x_surface_dos[train, :, :] = scaler_CV.fit_transform(
         x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
@@ -503,7 +508,6 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
     x_surface_dos[test, :, :] = scaler_CV.transform(
         x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
     ).reshape(x_surface_dos[test, :, :].shape)
-
     if args.multi_adsorbate == 1:
         x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
             x_adsorbate_dos[train, :, :].reshape(
@@ -515,7 +519,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 -1, x_adsorbate_dos[test, :, :].shape[-1]
             )
         ).reshape(x_adsorbate_dos[test, :, :].shape)
-    
+    #モデルの作成&学習&評価
     keras.backend.clear_session()
     shared_conv = dos_featurizer(args.channels)
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
@@ -841,16 +845,6 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
                 train_out_CV = train_out_CV_temp
                 test_y_CV = y_targets[test]
                 test_index = test
-
-            # if count == 0:
-            #     train_out_CV = train_out_CV_temp
-            #     test_y_CV = y_targets[test]
-            #     test_index = test
-            # elif count > 0:
-            #     train_out_CV = np.append(train_out_CV, train_out_CV_temp)
-            #     test_y_CV = np.append(test_y_CV, y_targets[test])
-            #     test_index = np.append(test_index, test)
-            # count = count + 1
         print((np.mean(cvscores), np.std(cvscores)))
         print(len(test_y_CV))
         print(len(train_out_CV))
