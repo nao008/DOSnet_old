@@ -167,7 +167,7 @@ def load_data(multi_adsorbate, data_dir):
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
 def create_model(shared_conv, channels, dropout):
     
-    # set_seed(42)
+    set_seed(42)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
@@ -554,7 +554,7 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     x_surface_dos[test, :, 18:27],
                 ]
             )
-            print("####################################", train_out_CV_temp)
+            print(train_out_CV_temp)
             results_kari.append(train_out_CV_temp)
             train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
             results[i] = train_out_CV_temp
