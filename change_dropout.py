@@ -730,6 +730,7 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
     else:
         print("dropout_width is not defined")
         sys.exit()
+    
     for dropout_count, dropout in enumerate(Dropouts):
         kfold_count = 0
         for train, test in kfold.split(x_surface_dos, y_targets):
@@ -851,6 +852,7 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
         log[f"{dropout}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
         with open(f"result/dropout/{args.data_dir}_CV_dropout{dropout}.txt", "w") as f:
             np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
+        del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 
 
 if __name__ == "__main__":
