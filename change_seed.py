@@ -118,13 +118,17 @@ def main():
         args.seed = np.random.randint(1, 1e6)
 
     if args.run_mode == 0:
+        mode = "regular"
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
         mode = "kfold"
         kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 2:
+        mode = "kfold_test"
         kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets)
+        #実行を終了
+        sys.exit()
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
     # float32型のデータをfloat型に変換
