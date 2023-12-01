@@ -121,8 +121,10 @@ def main():
         args.seed = np.random.randint(1, 1e6)
 
     if args.run_mode == 0:
+        mode = "regular"
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
+        mode = "kfold"
         # kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets)
         kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
@@ -131,7 +133,7 @@ def main():
     print(log)
     # float32型のデータをfloat型に変換
     log = {k: float(v) for k, v in log.items()}
-    with(open(f"result/dropout/{args.data_dir}_{args.dropout_width}_log.txt", "w")) as f:
+    with(open(f"result/dropout/{args.data_dir}_{args.dropout_width}_{mode}_log.txt", "w")) as f:
         f.write(json.dumps(log))
 
 
