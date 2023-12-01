@@ -512,7 +512,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
     shared_conv = dos_featurizer(args.channels)
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
     if args.multi_adsorbate == 0:
-        model_CV = create_model(shared_conv, args.channels, 0.0)
+        model_CV = create_model(shared_conv, args.channels, 42)
         model_CV.compile(
             loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
         )
@@ -621,7 +621,7 @@ def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
     shared_conv = dos_featurizer(args.channels)
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
     if args.multi_adsorbate == 0:
-        model_CV = create_model(shared_conv, args.channels, 0.0)
+        model_CV = create_model(shared_conv, args.channels, 42)
         model_CV.compile(
             loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
         )
