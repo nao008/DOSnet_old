@@ -659,7 +659,7 @@ def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 x_surface_dos[test, :, 18:27],
             ]
         )
-        print(train_out_CV_temp)
+        # print(train_out_CV_temp)
         train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
         #結果を照合
         with open(f"result/check/check_{args.data_dir}_CV_dropout0.txt", "r") as f:
