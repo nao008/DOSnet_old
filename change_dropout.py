@@ -834,15 +834,24 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
                 train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
             print((model_CV.metrics_names[1], scores[1]))
             cvscores.append(scores[1])
-            if count == 0:
-                train_out_CV = train_out_CV_temp
-                test_y_CV = y_targets[test]
-                test_index = test
-            elif count > 0:
+            try:
                 train_out_CV = np.append(train_out_CV, train_out_CV_temp)
                 test_y_CV = np.append(test_y_CV, y_targets[test])
                 test_index = np.append(test_index, test)
-            count = count + 1
+            except:
+                train_out_CV = train_out_CV_temp
+                test_y_CV = y_targets[test]
+                test_index = test
+
+            # if count == 0:
+            #     train_out_CV = train_out_CV_temp
+            #     test_y_CV = y_targets[test]
+            #     test_index = test
+            # elif count > 0:
+            #     train_out_CV = np.append(train_out_CV, train_out_CV_temp)
+            #     test_y_CV = np.append(test_y_CV, y_targets[test])
+            #     test_index = np.append(test_index, test)
+            # count = count + 1
         print((np.mean(cvscores), np.std(cvscores)))
         print(len(test_y_CV))
         print(len(train_out_CV))
