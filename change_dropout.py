@@ -492,8 +492,8 @@ def run_kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
     results = [None, None]
     results_kari = []
     results_kari_kari = []
+    reset_random_seed()
     for i in range(2):
-        reset_random_seed()
         kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
         splits = list(kfold.split(x_surface_dos, y_targets))
         train, test = splits[0]
