@@ -737,9 +737,9 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
         kfold_count = 0
         for train, test in kfold.split(x_surface_dos, y_targets):
             #実験のため、１回のみ実行
-            if kfold_count > 0:
-                break
-            kfold_count += 1
+            # if kfold_count > 0:
+            #     break
+            # kfold_count += 1
 
             scaler_CV = StandardScaler()
             x_surface_dos[train, :, :] = scaler_CV.fit_transform(
