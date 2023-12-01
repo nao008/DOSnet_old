@@ -598,7 +598,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
             with open(f"result/check/check_{args.data_dir}_CV_dropout0.txt", "w") as f:
                 np.savetxt(f, np.stack((y_targets[test], train_out_CV_temp), axis=-1))
             del model_CV, train_out_CV_temp
-    
+
 #再現性の確認
 def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
     reset_random_seed()
@@ -712,9 +712,6 @@ def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
             np.savetxt(f, np.stack((y_targets[test], train_out_CV_temp), axis=-1))
         del model_CV, train_out_CV_temp
 
-
-
-    
 # kfold
 def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
     reset_random_seed()
