@@ -731,9 +731,9 @@ def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
         print("dropout_width is not defined")
         sys.exit()
     for dropout_count, dropout in enumerate(Dropouts):
+        kfold_count = 0
         for train, test in kfold.split(x_surface_dos, y_targets):
             #実験のため、１回のみ実行
-            kfold_count = 0
             if kfold_count > 0:
                 break
             kfold_count += 1
