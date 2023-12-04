@@ -89,6 +89,13 @@ parser.add_argument(
     default="wide",
     type=str,
 )
+
+parser.add_argument(
+    "--kfold_num",
+    default=5,
+    type=int,
+    help="kfoldの回数。(dfault:5)"
+)
 args = parser.parse_args(sys.argv[1:])
 
 def reset_random_seed(seed):
@@ -132,7 +139,7 @@ def main():
     print(log)
     # float32型のデータをfloat型に変換
     log = {k: float(v) for k, v in log.items()}
-    with(open(f"result/dropout/{args.data_dir}_{args.dropout_width}_{mode}_log.txt", "w")) as f:
+    with(open(f"result/dropout/{args.data_dir}_{args.dropout_width}_{mode}{args.kfold_num}_log.txt", "w")) as f:
         f.write(json.dumps(log))
 
 
@@ -657,7 +664,6 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed = args.seed
     reset_random_seed(seed)
     cvscores = []
-    count = 0
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
     ### define dropoout
     dropout_width = args.dropout_width
@@ -671,15 +677,15 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         print("dropout_width is not defined")
         sys.exit()
     
-    for dropout_count, dropout in enumerate(Dropouts):
+    for dropout in Dropouts:
         kfold_count = 0
         for train, test in kfold.split(x_surface_dos_raw, y_targets):
             x_surface_dos = x_surface_dos_raw.copy()
-            #実験のため、１回のみ実行
-            if kfold_count > 0:
+            #実験のため、kfold_num回のみ実行
+            kfold_count += 1
+            if kfold_count > args.kfold_num:
                 break
             print(kfold_count)
-            kfold_count += 1
             
 
             scaler_CV = StandardScaler()
@@ -792,7 +798,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         print(f"dropout:{dropout} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
         log[f"{dropout}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
         log[f"{dropout}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
-        with open(f"result/dropout/{args.data_dir}_CV_dropout{dropout}.txt", "w") as f:
+        with open(f"result/dropout/{args.data_dir}_CV{args.kfold_num}_dropout{dropout}.txt", "w") as f:
             np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
         del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 
