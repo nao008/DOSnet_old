@@ -492,8 +492,9 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 
 
 #再現性の確認用run_kfoldの結果生成
-def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
+def kfold_test_create(args, x_surface_dos_raw, x_adsorbate_dos, y_targets):
     for i in range(2):
+        x_surface_dos = x_surface_dos_raw.copy()
         seed = args.seed
         #seedの固定
         reset_random_seed(seed)
@@ -523,7 +524,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 )
             ).reshape(x_adsorbate_dos[test, :, :].shape)
         
-        np.save(f"result/check/check_{args.data_dir}_CV_{i}_test.npy", x_surface_dos[test, :, :])
+        # np.save(f"result/check/check_{args.data_dir}_CV_{i}_test.npy", x_surface_dos[test, :, :])
 
         #モデルの作成&学習&評価
         # keras.backend.clear_session()
