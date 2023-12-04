@@ -491,7 +491,7 @@ def kfold_test(args, x_surface_dos_raw, x_adsorbate_dos, y_targets):
         x_surface_dos = x_surface_dos_raw.copy()
         seed = args.seed
         reset_random_seed(seed)
-        kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
+        kfold = KFold(n_splits=5, shuffle=True, random_state=seed)
         splits = list(kfold.split(x_surface_dos, y_targets))
         train, test = splits[0]
         scaler_CV = StandardScaler()
@@ -609,8 +609,8 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed_list = []
     for i in range(10):
         seed_list.append(42+i)
-    for seed in seed_list:
-        reset_random_seed(seed)
+    for seed_val in seed_list:
+        reset_random_seed(seed_val)
         kfold_count = 0
         for train, test in kfold.split(x_surface_dos_raw, y_targets):
             x_surface_dos = x_surface_dos_raw.copy()
@@ -642,7 +642,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             shared_conv = dos_featurizer(args.channels)
             lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
             if args.multi_adsorbate == 0:
-                model_CV = create_model(shared_conv, args.channels, seed)
+                model_CV = create_model(shared_conv, args.channels, seed_val)
                 model_CV.compile(
                     loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                 )
@@ -725,11 +725,11 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         print((np.mean(cvscores), np.std(cvscores)))
         print(len(test_y_CV))
         print(len(train_out_CV))
-        print(f"seed:{seed} CV MAE: ", mean_absolute_error(test_y_CV, train_out_CV))
-        print(f"seed:{seed} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
-        log[f"{seed}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
-        log[f"{seed}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
-        with open(f"result/seed/{args.data_dir}_CV{args.kfold_num}_seed{seed}.txt", "w") as f:
+        print(f"seed:{seed_val} CV MAE: ", mean_absolute_error(test_y_CV, train_out_CV))
+        print(f"seed:{seed_val} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
+        log[f"{seed_val}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
+        log[f"{seed_val}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
+        with open(f"result/seed/{args.data_dir}_CV{args.kfold_num}_seed{seed_val}.txt", "w") as f:
             np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
         del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 
