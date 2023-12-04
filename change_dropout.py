@@ -522,7 +522,10 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     -1, x_adsorbate_dos[test, :, :].shape[-1]
                 )
             ).reshape(x_adsorbate_dos[test, :, :].shape)
-        print(x_surface_dos[test, :, :])
+        with open(f"result/check/check_{args.data_dir}_CV_kari_{i}.txt", "w") as f:
+            #x_surface_dos[test, :, :]を保存
+            np.savetxt(f, x_surface_dos[test, :, :])
+
         #モデルの作成&学習&評価
         # keras.backend.clear_session()
         shared_conv = dos_featurizer(args.channels)
@@ -560,7 +563,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     x_surface_dos[test, :, 18:27],
                 ]
             )
-            print(train_out_CV_temp)
+            # print(train_out_CV_temp)
             train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
             #結果を保存
             with open(f"result/check/check_{args.data_dir}_CV_{i}.txt", "w") as f:
