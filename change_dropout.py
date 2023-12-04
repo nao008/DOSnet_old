@@ -703,7 +703,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             shared_conv = dos_featurizer(args.channels)
             lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
             if args.multi_adsorbate == 0:
-                model_CV = create_model(shared_conv, args.channels, dropout)
+                model_CV = create_model(shared_conv, args.channels, dropout, seed)
                 model_CV.compile(
                     loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                 )
