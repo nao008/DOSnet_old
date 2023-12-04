@@ -503,7 +503,6 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
         splits = list(kfold.split(x_surface_dos, y_targets))
         #trainとtestに分割
         train, test = splits[0]
-        print(test)
         #標準化
         scaler_CV = StandardScaler()
         x_surface_dos[train, :, :] = scaler_CV.fit_transform(
@@ -523,6 +522,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                     -1, x_adsorbate_dos[test, :, :].shape[-1]
                 )
             ).reshape(x_adsorbate_dos[test, :, :].shape)
+        print(x_surface_dos[test, :, :])
         #モデルの作成&学習&評価
         # keras.backend.clear_session()
         shared_conv = dos_featurizer(args.channels)
