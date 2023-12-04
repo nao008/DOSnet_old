@@ -126,7 +126,6 @@ def main():
 
     if args.seed == 0:
         args.seed = np.random.randint(1, 1e6)
-    print(type(args.run_mode))
     if args.run_mode == 0:
         mode = "regular"
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
