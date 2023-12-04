@@ -124,11 +124,6 @@ def main():
         mode = "kfold"
         kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
-    elif args.run_mode == 2:
-        mode = "kfold_test"
-        kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets)
-        #実行を終了
-        sys.exit()
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
     # float32型のデータをfloat型に変換
@@ -317,7 +312,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
     lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
     tensorboard = TensorBoard(log_dir="logs/{}".format(time.time()), histogram_freq=1)
 
-    ### define dropoout
+    ### define seed
     seed_list = [42, 666, 2023, 1, 3]
     
     for count, seed_val in enumerate(seed_list):
@@ -481,9 +476,82 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
         if args.save_model == 1:
             print("Saving model...")
             model.save(f"models/seed_{seed_val}_saved.h5")
-            model_CV = create_model_combined(shared_conv, args.channels)
+
+
+#再現性の確認
+def kfold_test(args, x_surface_dos_raw, x_adsorbate_dos, y_targets):
+    results = []
+    for i in range(2):
+        x_surface_dos = x_surface_dos_raw.copy()
+        seed = args.seed
+        reset_random_seed(seed)
+        kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
+        splits = list(kfold.split(x_surface_dos, y_targets))
+        train, test = splits[0]
+        scaler_CV = StandardScaler()
+        x_surface_dos[train, :, :] = scaler_CV.fit_transform(
+            x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
+        ).reshape(x_surface_dos[train, :, :].shape)
+        x_surface_dos[test, :, :] = scaler_CV.transform(
+            x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
+        ).reshape(x_surface_dos[test, :, :].shape)
+
+        if args.multi_adsorbate == 1:
+            x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
+                x_adsorbate_dos[train, :, :].reshape(
+                    -1, x_adsorbate_dos[train, :, :].shape[-1]
+                )
+            ).reshape(x_adsorbate_dos[train, :, :].shape)
+            x_adsorbate_dos[test, :, :] = scaler_CV.transform(
+                x_adsorbate_dos[test, :, :].reshape(
+                    -1, x_adsorbate_dos[test, :, :].shape[-1]
+                )
+            ).reshape(x_adsorbate_dos[test, :, :].shape)
+        
+        keras.backend.clear_session()
+        shared_conv = dos_featurizer(args.channels)
+        lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
+        if args.multi_adsorbate == 0:
+            model_CV = create_model(shared_conv, args.channels, 42)
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+            )
+            model_CV.fit(
+                [
+                    x_surface_dos[train, :, 0:9],
+                    x_surface_dos[train, :, 9:18],
+                    x_surface_dos[train, :, 18:27],
+                ],
+                y_targets[train],
+                batch_size=args.batch_size,
+                epochs=0,
+                verbose=0,
+                callbacks=[lr_scheduler],
+            )
+            scores = model_CV.evaluate(
+                [
+                    x_surface_dos[test, :, 0:9],
+                    x_surface_dos[test, :, 9:18],
+                    x_surface_dos[test, :, 18:27],
+                ],
+                y_targets[test],
+                verbose=0,
+            )
+            train_out_CV_temp = model_CV.predict(
+                [
+                    x_surface_dos[test, :, 0:9],
+                    x_surface_dos[test, :, 9:18],
+                    x_surface_dos[test, :, 18:27],
+                ]
+            )
+            # print(train_out_CV_temp)
+            train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+            results.append(train_out_CV_temp)
+            del model_CV, train_out_CV_temp
+        elif args.multi_adsorbate == 1:
+            model_CV = create_model_combined(shared_conv, args.channels)
+            model_CV.compile(
+                    loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
             model_CV.fit(
                 [
@@ -517,126 +585,17 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
                 ]
             )
             train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-            with open(f"result/check/check_{args.data_dir}_CV_seed.txt", "w") as f:
-                np.savetxt(f, np.stack((y_targets[test], train_out_CV_temp), axis=-1))
+            results.append(train_out_CV_temp)
             del model_CV, train_out_CV_temp
 
-#再現性の確認
-def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
-    seed = args.seed
-    reset_random_seed(seed)
-    kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
-    splits = list(kfold.split(x_surface_dos, y_targets))
-    train, test = splits[0]
-    scaler_CV = StandardScaler()
-    x_surface_dos[train, :, :] = scaler_CV.fit_transform(
-        x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
-    ).reshape(x_surface_dos[train, :, :].shape)
-    x_surface_dos[test, :, :] = scaler_CV.transform(
-        x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
-    ).reshape(x_surface_dos[test, :, :].shape)
-
-    if args.multi_adsorbate == 1:
-        x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
-            x_adsorbate_dos[train, :, :].reshape(
-                -1, x_adsorbate_dos[train, :, :].shape[-1]
-            )
-        ).reshape(x_adsorbate_dos[train, :, :].shape)
-        x_adsorbate_dos[test, :, :] = scaler_CV.transform(
-            x_adsorbate_dos[test, :, :].reshape(
-                -1, x_adsorbate_dos[test, :, :].shape[-1]
-            )
-        ).reshape(x_adsorbate_dos[test, :, :].shape)
-    
-    keras.backend.clear_session()
-    shared_conv = dos_featurizer(args.channels)
-    lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
-    if args.multi_adsorbate == 0:
-        model_CV = create_model(shared_conv, args.channels, 42)
-        model_CV.compile(
-            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-        )
-        model_CV.fit(
-            [
-                x_surface_dos[train, :, 0:9],
-                x_surface_dos[train, :, 9:18],
-                x_surface_dos[train, :, 18:27],
-            ],
-            y_targets[train],
-            batch_size=args.batch_size,
-            epochs=0,
-            verbose=0,
-            callbacks=[lr_scheduler],
-        )
-        scores = model_CV.evaluate(
-            [
-                x_surface_dos[test, :, 0:9],
-                x_surface_dos[test, :, 9:18],
-                x_surface_dos[test, :, 18:27],
-            ],
-            y_targets[test],
-            verbose=0,
-        )
-        train_out_CV_temp = model_CV.predict(
-            [
-                x_surface_dos[test, :, 0:9],
-                x_surface_dos[test, :, 9:18],
-                x_surface_dos[test, :, 18:27],
-            ]
-        )
-        # print(train_out_CV_temp)
-        train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-        #結果を照合
-        with open(f"result/check/check_{args.data_dir}_CV_seed.txt", "r") as f:
-            results = np.loadtxt(f)
-        if are_lists_equal(results[:,1], train_out_CV_temp):
-            print("result is same")
-        else:
-            print("result is not same")
-            sys.exit()
-    elif args.multi_adsorbate == 1:
-        model_CV = create_model_combined(shared_conv, args.channels)
-        model_CV.compile(
-                loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-        )
-        model_CV.fit(
-            [
-                x_surface_dos[train, :, 0:9],
-                x_surface_dos[train, :, 9:18],
-                x_surface_dos[train, :, 18:27],
-                x_adsorbate_dos[train, :, :],
-            ],
-            y_targets[train],
-            batch_size=args.batch_size,
-            epochs=0,
-            verbose=0,
-            callbacks=[lr_scheduler],
-        )
-        scores = model_CV.evaluate(
-            [
-                x_surface_dos[test, :, 0:9],
-                x_surface_dos[test, :, 9:18],
-                x_surface_dos[test, :, 18:27],
-                x_adsorbate_dos[test, :, :],
-            ],
-            y_targets[test],
-            verbose=0,
-        )
-        train_out_CV_temp = model_CV.predict(
-            [
-                x_surface_dos[test, :, 0:9],
-                x_surface_dos[test, :, 9:18],
-                x_surface_dos[test, :, 18:27],
-                x_adsorbate_dos[test, :, :],
-            ]
-        )
-        train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-        with open(f"result/check/check_{args.data_dir}_CV_seed.txt", "w") as f:
-            np.savetxt(f, np.stack((y_targets[test], train_out_CV_temp), axis=-1))
-        del model_CV, train_out_CV_temp
+    if are_lists_equal(results[0], results[1]):
+        print("result is same")
+    else:
+        print("result is not same")
+        sys.exit()
 
 # kfold
-def run_kfold(args, x_surface_dos_row, x_adsorbate_dos, y_targets,log):
+def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed = args.seed
     cvscores = []
     count = 0
@@ -648,8 +607,8 @@ def run_kfold(args, x_surface_dos_row, x_adsorbate_dos, y_targets,log):
     for seed_count, seed in enumerate(seed_list):
         reset_random_seed(seed)
         kfold_count = 0
-        x_surface_dos = x_surface_dos_row.copy()
-        for train, test in kfold.split(x_surface_dos, y_targets):
+        for train, test in kfold.split(x_surface_dos_raw, y_targets):
+            x_surface_dos = x_surface_dos_raw.copy()
             #実験のため、１回のみ実行
             if kfold_count > 0:
                 break
