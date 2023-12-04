@@ -85,6 +85,12 @@ parser.add_argument(
     type=int,
     help="path to file containing DOS and targets (default: 0)",
 )
+parser.add_argument(
+    "--kfold_num",
+    default=5,
+    type=int,
+    help="kfoldの回数。(dfault:5)"
+)
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -128,7 +134,7 @@ def main():
     print(log)
     # float32型のデータをfloat型に変換
     log = {k: float(v) for k, v in log.items()}
-    with(open(f"result/seed/{args.data_dir}_seed_{mode}_log.txt", "w")) as f:
+    with(open(f"result/seed/{args.data_dir}_seed_{mode}{args.kfold_num}_log.txt", "w")) as f:
         f.write(json.dumps(log))
 
 
@@ -598,21 +604,20 @@ def kfold_test(args, x_surface_dos_raw, x_adsorbate_dos, y_targets):
 def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed = args.seed
     cvscores = []
-    count = 0
     kfold = KFold(n_splits=5, shuffle=True, random_state=seed)
     ### define seed
     seed_list = []
     for i in range(10):
         seed_list.append(42+i)
-    for seed_count, seed in enumerate(seed_list):
+    for seed in seed_list:
         reset_random_seed(seed)
         kfold_count = 0
         for train, test in kfold.split(x_surface_dos_raw, y_targets):
             x_surface_dos = x_surface_dos_raw.copy()
             #実験のため、１回のみ実行
-            if kfold_count > 0:
-                break
             kfold_count += 1
+            if kfold_count > args.kfold_num:
+                break
 
             scaler_CV = StandardScaler()
             x_surface_dos[train, :, :] = scaler_CV.fit_transform(
@@ -724,7 +729,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         print(f"seed:{seed} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
         log[f"{seed}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
         log[f"{seed}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
-        with open(f"result/seed/{args.data_dir}_CV_seed{seed}.txt", "w") as f:
+        with open(f"result/seed/{args.data_dir}_CV{args.kfold_num}_seed{seed}.txt", "w") as f:
             np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
         del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 
