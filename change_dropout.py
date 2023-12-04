@@ -654,7 +654,8 @@ def kfold_test(args, x_surface_dos_raw, x_adsorbate_dos, y_targets):
 
 # kfold
 def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
-    reset_random_seed()
+    seed = args.seed
+    reset_random_seed(seed)
     cvscores = []
     count = 0
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
