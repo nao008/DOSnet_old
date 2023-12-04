@@ -134,7 +134,7 @@ def main():
     print(log)
     # float32型のデータをfloat型に変換
     log = {k: float(v) for k, v in log.items()}
-    with(open(f"result/seed/{args.data_dir}_seed_dropout_{mode}{args.kfold_num}_log.txt", "w")) as f:
+    with(open(f"result/seed_dropout/{args.data_dir}_seed_dropout_{mode}{args.kfold_num}_log.txt", "w")) as f:
         f.write(json.dumps(log))
 
 
