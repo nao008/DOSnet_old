@@ -119,7 +119,7 @@ def main():
 
     if args.seed == 0:
         args.seed = np.random.randint(1, 1e6)
-
+    print(type(args.run_mode))
     if args.run_mode == 0:
         mode = "regular"
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
@@ -128,6 +128,7 @@ def main():
         kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 2:
+        mode = "kfold"
         kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets)
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
