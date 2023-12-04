@@ -503,6 +503,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
         splits = list(kfold.split(x_surface_dos, y_targets))
         #trainとtestに分割
         train, test = splits[0]
+        print(test)
         #標準化
         scaler_CV = StandardScaler()
         x_surface_dos[train, :, :] = scaler_CV.fit_transform(
