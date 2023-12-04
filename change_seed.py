@@ -88,7 +88,7 @@ parser.add_argument(
 
 args = parser.parse_args(sys.argv[1:])
 
-def reset_random_seed(seed=42):
+def reset_random_seed(seed):
     os.environ['PYTHONHASHSEED'] = '0'
     os.environ['TF_DETERMINISTIC_OPS'] = 'true'
     os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
@@ -481,80 +481,6 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
         if args.save_model == 1:
             print("Saving model...")
             model.save(f"models/seed_{seed_val}_saved.h5")
-
-#再現性の確認用run_kfoldの結果生成
-def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
-    #seedの固定
-    reset_random_seed()
-    #kfoldの設定
-    kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
-    #kfoldの分割
-    splits = list(kfold.split(x_surface_dos, y_targets))
-    #trainとtestに分割
-    train, test = splits[0]
-    #標準化
-    scaler_CV = StandardScaler()
-    x_surface_dos[train, :, :] = scaler_CV.fit_transform(
-        x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
-    ).reshape(x_surface_dos[train, :, :].shape)
-    x_surface_dos[test, :, :] = scaler_CV.transform(
-        x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
-    ).reshape(x_surface_dos[test, :, :].shape)
-    if args.multi_adsorbate == 1:
-        x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
-            x_adsorbate_dos[train, :, :].reshape(
-                -1, x_adsorbate_dos[train, :, :].shape[-1]
-            )
-        ).reshape(x_adsorbate_dos[train, :, :].shape)
-        x_adsorbate_dos[test, :, :] = scaler_CV.transform(
-            x_adsorbate_dos[test, :, :].reshape(
-                -1, x_adsorbate_dos[test, :, :].shape[-1]
-            )
-        ).reshape(x_adsorbate_dos[test, :, :].shape)
-    #モデルの作成&学習&評価
-    keras.backend.clear_session()
-    shared_conv = dos_featurizer(args.channels)
-    lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
-    if args.multi_adsorbate == 0:
-        model_CV = create_model(shared_conv, args.channels, 42)
-        model_CV.compile(
-            loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-        )
-        model_CV.fit(
-            [
-                x_surface_dos[train, :, 0:9],
-                x_surface_dos[train, :, 9:18],
-                x_surface_dos[train, :, 18:27],
-            ],
-            y_targets[train],
-            batch_size=args.batch_size,
-            epochs=0,
-            verbose=0,
-            callbacks=[lr_scheduler],
-        )
-        scores = model_CV.evaluate(
-            [
-                x_surface_dos[test, :, 0:9],
-                x_surface_dos[test, :, 9:18],
-                x_surface_dos[test, :, 18:27],
-            ],
-            y_targets[test],
-            verbose=0,
-        )
-        train_out_CV_temp = model_CV.predict(
-            [
-                x_surface_dos[test, :, 0:9],
-                x_surface_dos[test, :, 9:18],
-                x_surface_dos[test, :, 18:27],
-            ]
-        )
-        print(train_out_CV_temp)
-        train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-        #結果を保存
-        with open(f"result/check/check_{args.data_dir}_CV_seed.txt", "w") as f:
-            np.savetxt(f, np.stack((y_targets[test], train_out_CV_temp), axis=-1))
-        del model_CV, train_out_CV_temp
-    elif args.multi_adsorbate == 1:
             model_CV = create_model_combined(shared_conv, args.channels)
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
@@ -597,7 +523,8 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
 
 #再現性の確認
 def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
-    reset_random_seed()
+    seed = args.seed
+    reset_random_seed(seed)
     kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
     splits = list(kfold.split(x_surface_dos, y_targets))
     train, test = splits[0]
@@ -709,17 +636,19 @@ def kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets):
         del model_CV, train_out_CV_temp
 
 # kfold
-def run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log):
-    reset_random_seed()
+def run_kfold(args, x_surface_dos_row, x_adsorbate_dos, y_targets,log):
+    seed = args.seed
     cvscores = []
     count = 0
-    kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
+    kfold = KFold(n_splits=5, shuffle=True, random_state=seed)
     ### define seed
     seed_list = []
     for i in range(10):
         seed_list.append(42+i)
     for seed_count, seed in enumerate(seed_list):
+        reset_random_seed(seed)
         kfold_count = 0
+        x_surface_dos = x_surface_dos_row.copy()
         for train, test in kfold.split(x_surface_dos, y_targets):
             #実験のため、１回のみ実行
             if kfold_count > 0:
