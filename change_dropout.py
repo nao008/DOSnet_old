@@ -522,7 +522,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 )
             ).reshape(x_adsorbate_dos[test, :, :].shape)
         #モデルの作成&学習&評価
-        keras.backend.clear_session()
+        # keras.backend.clear_session()
         shared_conv = dos_featurizer(args.channels)
         lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
         if args.multi_adsorbate == 0:
