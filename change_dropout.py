@@ -91,7 +91,7 @@ parser.add_argument(
 )
 args = parser.parse_args(sys.argv[1:])
 
-def reset_random_seed(seed=args.seed):
+def reset_random_seed(seed):
     os.environ['PYTHONHASHSEED'] = '0'
     os.environ['TF_DETERMINISTIC_OPS'] = 'true'
     os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
@@ -169,9 +169,9 @@ def load_data(multi_adsorbate, data_dir):
 
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
-def create_model(shared_conv, channels, dropout):
+def create_model(shared_conv, channels, dropout, seed):
     
-    set_seed(args.seed)
+    set_seed(seed)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
@@ -494,8 +494,9 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 #再現性の確認用run_kfoldの結果生成
 def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
     for i in range(2):
+        seed = args.seed
         #seedの固定
-        reset_random_seed()
+        reset_random_seed(seed)
         #kfoldの設定
         kfold = KFold(n_splits=5, shuffle=True, random_state=args.seed)
         #kfoldの分割
@@ -526,7 +527,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
         shared_conv = dos_featurizer(args.channels)
         lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
         if args.multi_adsorbate == 0:
-            model_CV = create_model(shared_conv, args.channels, 0.0)
+            model_CV = create_model(shared_conv, args.channels, 0.0, seed)
             model_CV.compile(
                 loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
             )
