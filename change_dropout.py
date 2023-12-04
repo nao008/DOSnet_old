@@ -523,7 +523,7 @@ def kfold_test_create(args, x_surface_dos, x_adsorbate_dos, y_targets):
                 )
             ).reshape(x_adsorbate_dos[test, :, :].shape)
         
-        np.save(x_surface_dos[test, :, :], f"result/check/check_{args.data_dir}_CV_{i}_test.npy")
+        np.save(f"result/check/check_{args.data_dir}_CV_{i}_test.npy", x_surface_dos[test, :, :])
 
         #モデルの作成&学習&評価
         # keras.backend.clear_session()
