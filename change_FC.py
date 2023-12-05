@@ -174,7 +174,7 @@ def load_data(multi_adsorbate, data_dir):
 #4:全層に正則化
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
-def create_model(shared_conv, channels, switch, seed):
+def create_model(shared_conv, channels, seed, switch):
     set_seed(seed)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
@@ -625,131 +625,138 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed = args.seed
     cvscores = []
     kfold = KFold(n_splits=5, shuffle=True, random_state=seed)
+    seed_list = []
+    for i in range(10):
+        seed_list.append(42+i)
     fc_num = 5
     for fc_count in range(fc_num):
-        reset_random_seed(seed)
-        kfold_count = 0
-        for train, test in kfold.split(x_surface_dos_raw, y_targets):
-            x_surface_dos = x_surface_dos_raw.copy()
+        for seed_val in seed_list:
+            reset_random_seed(seed_val)
+            kfold_count = 0
+            for train, test in kfold.split(x_surface_dos_raw, y_targets):
+                x_surface_dos = x_surface_dos_raw.copy()
+                kfold_count += 1
+                if kfold_count > args.kfold_num:
+                    break
 
-            kfold_count += 1
-            if kfold_count > args.kfold_num:
-                break
+                scaler_CV = StandardScaler()
+                x_surface_dos[train, :, :] = scaler_CV.fit_transform(
+                    x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
+                ).reshape(x_surface_dos[train, :, :].shape)
+                x_surface_dos[test, :, :] = scaler_CV.transform(
+                    x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
+                ).reshape(x_surface_dos[test, :, :].shape)
+                if args.multi_adsorbate == 1:
+                    x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
+                        x_adsorbate_dos[train, :, :].reshape(
+                            -1, x_adsorbate_dos[train, :, :].shape[-1]
+                        )
+                    ).reshape(x_adsorbate_dos[train, :, :].shape)
+                    x_adsorbate_dos[test, :, :] = scaler_CV.transform(
+                        x_adsorbate_dos[test, :, :].reshape(
+                            -1, x_adsorbate_dos[test, :, :].shape[-1]
+                        )
+                    ).reshape(x_adsorbate_dos[test, :, :].shape)
 
-            scaler_CV = StandardScaler()
-            x_surface_dos[train, :, :] = scaler_CV.fit_transform(
-                x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
-            ).reshape(x_surface_dos[train, :, :].shape)
-            x_surface_dos[test, :, :] = scaler_CV.transform(
-                x_surface_dos[test, :, :].reshape(-1, x_surface_dos[test, :, :].shape[-1])
-            ).reshape(x_surface_dos[test, :, :].shape)
-            if args.multi_adsorbate == 1:
-                x_adsorbate_dos[train, :, :] = scaler_CV.fit_transform(
-                    x_adsorbate_dos[train, :, :].reshape(
-                        -1, x_adsorbate_dos[train, :, :].shape[-1]
+                keras.backend.clear_session()
+                shared_conv = dos_featurizer(args.channels)
+                lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
+                if args.multi_adsorbate == 0:
+                    model_CV = create_model(shared_conv, args.channels, seed_val, fc_count)
+                    model_CV.compile(
+                        loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                     )
-                ).reshape(x_adsorbate_dos[train, :, :].shape)
-                x_adsorbate_dos[test, :, :] = scaler_CV.transform(
-                    x_adsorbate_dos[test, :, :].reshape(
-                        -1, x_adsorbate_dos[test, :, :].shape[-1]
+                    model_CV.fit(
+                        [
+                            x_surface_dos[train, :, 0:9],
+                            x_surface_dos[train, :, 9:18],
+                            x_surface_dos[train, :, 18:27],
+                        ],
+                        y_targets[train],
+                        batch_size=args.batch_size,
+                        epochs=args.epochs,
+                        verbose=0,
+                        callbacks=[lr_scheduler],
                     )
-                ).reshape(x_adsorbate_dos[test, :, :].shape)
-
-            keras.backend.clear_session()
-            shared_conv = dos_featurizer(args.channels)
-            lr_scheduler = LearningRateScheduler(decay_schedule, verbose=0)
-            if args.multi_adsorbate == 0:
-                model_CV = create_model(shared_conv, args.channels, fc_count, seed)
-                model_CV.compile(
-                    loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-                )
-                model_CV.fit(
-                    [
-                        x_surface_dos[train, :, 0:9],
-                        x_surface_dos[train, :, 9:18],
-                        x_surface_dos[train, :, 18:27],
-                    ],
-                    y_targets[train],
-                    batch_size=args.batch_size,
-                    epochs=args.epochs,
-                    verbose=0,
-                    callbacks=[lr_scheduler],
-                )
-                scores = model_CV.evaluate(
-                    [
-                        x_surface_dos[test, :, 0:9],
-                        x_surface_dos[test, :, 9:18],
-                        x_surface_dos[test, :, 18:27],
-                    ],
-                    y_targets[test],
-                    verbose=0,
-                )
-                train_out_CV_temp = model_CV.predict(
-                    [
-                        x_surface_dos[test, :, 0:9],
-                        x_surface_dos[test, :, 9:18],
-                        x_surface_dos[test, :, 18:27],
-                    ]
-                )
-                train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-            elif args.multi_adsorbate == 1:
-                model_CV = create_model_combined(shared_conv, args.channels)
-                model_CV.compile(
-                    loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-                )
-                model_CV.fit(
-                    [
-                        x_surface_dos[train, :, 0:9],
-                        x_surface_dos[train, :, 9:18],
-                        x_surface_dos[train, :, 18:27],
-                        x_adsorbate_dos[train, :, :],
-                    ],
-                    y_targets[train],
-                    batch_size=args.batch_size,
-                    epochs=args.epochs,
-                    verbose=0,
-                    callbacks=[lr_scheduler],
-                )
-                scores = model_CV.evaluate(
-                    [
-                        x_surface_dos[test, :, 0:9],
-                        x_surface_dos[test, :, 9:18],
-                        x_surface_dos[test, :, 18:27],
-                        x_adsorbate_dos[test, :, :],
-                    ],
-                    y_targets[test],
-                    verbose=0,
-                )
-                train_out_CV_temp = model_CV.predict(
-                    [
-                        x_surface_dos[test, :, 0:9],
-                        x_surface_dos[test, :, 9:18],
-                        x_surface_dos[test, :, 18:27],
-                        x_adsorbate_dos[test, :, :],
-                    ]
-                )
-                train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-            print((model_CV.metrics_names[1], scores[1]))
-            cvscores.append(scores[1])
-            try:
-                train_out_CV = np.append(train_out_CV, train_out_CV_temp)
-                test_y_CV = np.append(test_y_CV, y_targets[test])
-                test_index = np.append(test_index, test)
-            except:
-                train_out_CV = train_out_CV_temp
-                test_y_CV = y_targets[test]
-                test_index = test
-        print((np.mean(cvscores), np.std(cvscores)))
-        print(len(test_y_CV))
-        print(len(train_out_CV))
-        print(f"fc:{fc_count} CV MAE: ", mean_absolute_error(test_y_CV, train_out_CV))
-        print(f"fc:{fc_count} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
-        log[f"{fc_count}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
-        log[f"{fc_count}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
-        with open(f"result/fc/{args.data_dir}_CV{args.kfold_num}_fc{fc_count}.txt", "w") as f:
-            np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
-        del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
-
+                    scores = model_CV.evaluate(
+                        [
+                            x_surface_dos[test, :, 0:9],
+                            x_surface_dos[test, :, 9:18],
+                            x_surface_dos[test, :, 18:27],
+                        ],
+                        y_targets[test],
+                        verbose=0,
+                    )
+                    train_out_CV_temp = model_CV.predict(
+                        [
+                            x_surface_dos[test, :, 0:9],
+                            x_surface_dos[test, :, 9:18],
+                            x_surface_dos[test, :, 18:27],
+                        ]
+                    )
+                    train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+                elif args.multi_adsorbate == 1:
+                    model_CV = create_model_combined(shared_conv, args.channels)
+                    model_CV.compile(
+                        loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
+                    )
+                    model_CV.fit(
+                        [
+                            x_surface_dos[train, :, 0:9],
+                            x_surface_dos[train, :, 9:18],
+                            x_surface_dos[train, :, 18:27],
+                            x_adsorbate_dos[train, :, :],
+                        ],
+                        y_targets[train],
+                        batch_size=args.batch_size,
+                        epochs=args.epochs,
+                        verbose=0,
+                        callbacks=[lr_scheduler],
+                    )
+                    scores = model_CV.evaluate(
+                        [
+                            x_surface_dos[test, :, 0:9],
+                            x_surface_dos[test, :, 9:18],
+                            x_surface_dos[test, :, 18:27],
+                            x_adsorbate_dos[test, :, :],
+                        ],
+                        y_targets[test],
+                        verbose=0,
+                    )
+                    train_out_CV_temp = model_CV.predict(
+                        [
+                            x_surface_dos[test, :, 0:9],
+                            x_surface_dos[test, :, 9:18],
+                            x_surface_dos[test, :, 18:27],
+                            x_adsorbate_dos[test, :, :],
+                        ]
+                    )
+                    train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+                print((model_CV.metrics_names[1], scores[1]))
+                cvscores.append(scores[1])
+                try:
+                    train_out_CV = np.append(train_out_CV, train_out_CV_temp)
+                    test_y_CV = np.append(test_y_CV, y_targets[test])
+                    test_index = np.append(test_index, test)
+                except:
+                    train_out_CV = train_out_CV_temp
+                    test_y_CV = y_targets[test]
+                    test_index = test
+            print((np.mean(cvscores), np.std(cvscores)))
+            print(len(test_y_CV))
+            print(len(train_out_CV))
+            print(f"seed:{seed_val} CV MAE: ", mean_absolute_error(test_y_CV, train_out_CV))
+            print(f"seed:{seed_val} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
+            log[f"{seed_val}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
+            log[f"{seed_val}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
+            # ディレクトリの生成
+            new_dir_path = f"result/fc/fc{fc_count}"
+            if not os.path.exists(new_dir_path):
+                os.makedirs(new_dir_path)
+            # 結果の書き込み
+            with open(f"{new_dir_path}/{args.data_dir}_CV{args.kfold_num}_fc{fc_count}.txt", "w") as f:
+                np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
+            del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 
 if __name__ == "__main__":
     main()
