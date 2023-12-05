@@ -22,3 +22,4 @@ test_plot.ipynb
 *.dio
 check_two_predict.ipynb
 *.ipynb
+config.ini
