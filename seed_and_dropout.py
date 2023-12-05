@@ -731,7 +731,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             print(f"seed:{seed_val} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
             log[f"{seed_val}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
             log[f"{seed_val}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
-            with open(f"result/seed_dropoout/{dropout}/{args.data_dir}_CV{args.kfold_num}_seed{seed_val}_.txt", "w") as f:
+            with open(f"result/seed_dropoout/{dropout}/{args.data_dir}_CV{args.kfold_num}_seed{seed_val}.txt", "w") as f:
                 np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
             del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 

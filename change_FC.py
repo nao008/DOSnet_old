@@ -87,9 +87,16 @@ parser.add_argument(
     help="path to file containing DOS and targets (default: 0)",
 )
 
+parser.add_argument(
+    "--kfold_num",
+    default=5,
+    type=int,
+    help="kfoldの回数。(dfault:5)"
+)
+
 args = parser.parse_args(sys.argv[1:])
 
-def reset_random_seed(seed=42):
+def reset_random_seed(seed):
     os.environ['PYTHONHASHSEED'] = '0'
     os.environ['TF_DETERMINISTIC_OPS'] = 'true'
     os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
@@ -119,14 +126,17 @@ def main():
         args.seed = np.random.randint(1, 1e6)
 
     if args.run_mode == 0:
+        mode = "regular"
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
-        print("no")
+        mode = "kfold"
+        kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
+        run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     print("--- %s seconds ---" % (time.time() - start_time))
     print(log)
     # float32型のデータをfloat型に変換
     log = {k: float(v) for k, v in log.items()}
-    with(open(f"result/fc/{args.data_dir}_fc_log.txt", "w")) as f:
+    with(open(f"result/fc/{args.data_dir}_fc_{mode}{args.kfold_num}log.txt", "w")) as f:
         f.write(json.dumps(log))
 
 
@@ -158,16 +168,14 @@ def load_data(multi_adsorbate, data_dir):
 
     return surface_dos, x_adsorbate_dos, targets
 
-#試行回数
-change_num = 5
 #1:層を増やす
 #2:ノードを増やす
 #3:活性化関数をすべてreluに
 #4:全層に正則化
 ###Creates the ML model with keras
 ###This is the overall model where all 3 adsorption sites are fitted at the same time
-def create_model(shared_conv, channels, switch):
-
+def create_model(shared_conv, channels, switch, seed):
+    set_seed(seed)
     ###Each input represents one out of three possible bonding atoms
     input1 = Input(shape=(2000, channels))
     input2 = Input(shape=(2000, channels))
