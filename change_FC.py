@@ -630,6 +630,8 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         seed_list.append(42+i)
     fc_num = 5
     for fc_count in range(fc_num):
+        fc_log_mae = []
+        fc_log_rmse = []
         for seed_val in seed_list:
             reset_random_seed(seed_val)
             kfold_count = 0
@@ -747,8 +749,10 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             print(len(train_out_CV))
             print(f"seed:{seed_val} CV MAE: ", mean_absolute_error(test_y_CV, train_out_CV))
             print(f"seed:{seed_val} CV RMSE: ", mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
-            log[f"{seed_val}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
-            log[f"{seed_val}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
+            fc_log_mae.append(mean_absolute_error(test_y_CV, train_out_CV))
+            fc_log_rmse.append(mean_squared_error(test_y_CV, train_out_CV) ** (0.5))
+            # fc_log[f"{seed_val}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
+            # fc_log[f"{seed_val}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
             # ディレクトリの生成
             new_dir_path = f"result/fc/fc{fc_count}"
             if not os.path.exists(new_dir_path):
@@ -757,6 +761,8 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             with open(f"{new_dir_path}/{args.data_dir}_CV{args.kfold_num}_fc_seed{seed_val}.txt", "w") as f:
                 np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
             del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
+        log[f"{fc_count}_mae"] = np.mean(fc_log_mae)
+        log[f"{fc_count}_rmse"] = np.mean(fc_log_rmse)
 
 if __name__ == "__main__":
     main()
