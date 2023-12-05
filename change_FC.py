@@ -754,7 +754,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             if not os.path.exists(new_dir_path):
                 os.makedirs(new_dir_path)
             # 結果の書き込み
-            with open(f"{new_dir_path}/{args.data_dir}_CV{args.kfold_num}_fc{fc_count}.txt", "w") as f:
+            with open(f"{new_dir_path}/{args.data_dir}_CV{args.kfold_num}_fc_seed{seed_val}.txt", "w") as f:
                 np.savetxt(f, np.stack((test_y_CV, train_out_CV), axis=-1))
             del model_CV, train_out_CV, test_y_CV, test_index, scores, train_out_CV_temp
 
