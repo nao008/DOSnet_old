@@ -610,7 +610,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed_list = []
     for i in range(10):
         seed_list.append(42+i)
-    epochs = [60, 100, 150, 200, 250]
+    epochs = [300, 500, 1000, 2000]
     for epoch in epochs:
         epoch_log_mae = []
         epoch_log_rmse = []
