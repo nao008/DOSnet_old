@@ -287,7 +287,7 @@ def are_lists_equal(list1, list2):
 
 # regular training
 def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
-
+    change_num = 5
     ###Split data into train and test
     if args.multi_adsorbate == 0:
         x_train, x_test, y_train, y_test = train_test_split(
