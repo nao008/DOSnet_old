@@ -679,18 +679,16 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     for i in range(10):
         seed_list.append(42+i)
     for dropout in Dropouts:
-        kfold_count = 0
         dropout_log_mae = []
         dropout_log_rmse = []
         for seed_val in seed_list:
+            kfold_count = 0
             for train, test in kfold.split(x_surface_dos_raw, y_targets):
                 x_surface_dos = x_surface_dos_raw.copy()
                 #実験のため、kfold_num回のみ実行
                 kfold_count += 1
                 if kfold_count > args.kfold_num:
                     break
-                print(kfold_count)
-
                 scaler_CV = StandardScaler()
                 x_surface_dos[train, :, :] = scaler_CV.fit_transform(
                     x_surface_dos[train, :, :].reshape(-1, x_surface_dos[train, :, :].shape[-1])
@@ -784,16 +782,19 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
                         ]
                     )
                     train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+
                 print((model_CV.metrics_names[1], scores[1]))
                 cvscores.append(scores[1])
                 try:
                     train_out_CV = np.append(train_out_CV, train_out_CV_temp)
                     test_y_CV = np.append(test_y_CV, y_targets[test])
                     test_index = np.append(test_index, test)
+                    print("add result")
                 except:
                     train_out_CV = train_out_CV_temp
                     test_y_CV = y_targets[test]
                     test_index = test
+                    print("first result")
             print((np.mean(cvscores), np.std(cvscores)))
             print(len(test_y_CV))
             print(len(train_out_CV))
