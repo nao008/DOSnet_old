@@ -24,3 +24,4 @@ check_two_predict.ipynb
 *.ipynb
 config.ini
 done_list.md
+moniter_script.sh

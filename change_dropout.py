@@ -671,12 +671,12 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     elif dropout_width == "detail":
         Dropouts = [0.3, 0.34, 0.38, 0.42, 0.46]
     elif dropout_width == "custom":
-        Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
+        Dropouts = [0.2]
     else:
         print("dropout_width is not defined")
         sys.exit()
     seed_list = []
-    for i in range(10):
+    for i in range(100):
         seed_list.append(42+i)
     for dropout in Dropouts:
         dropout_log_mae = []
@@ -805,7 +805,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
             # log[f"{dropout}_mae"] = mean_absolute_error(test_y_CV, train_out_CV)
             # log[f"{dropout}_rmse"] = mean_squared_error(test_y_CV, train_out_CV) ** (0.5)
             #ディレクトリの生成
-            new_dir_path = f"result/dropout/dropout{dropout}"
+            new_dir_path = f"result/dropout/dropout_vol2_{dropout}"
             if not os.path.exists(new_dir_path):
                 os.makedirs(new_dir_path)
             with open(f"{new_dir_path}/{args.data_dir}_CV{args.kfold_num}_dropout_seed{seed_val}.txt", "w") as f:
