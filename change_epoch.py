@@ -187,7 +187,7 @@ def create_model(shared_conv, channels, seed):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(0.0)(convmerge)
+    convmerge = Dropout(0.2)(convmerge)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
@@ -610,7 +610,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     seed_list = []
     for i in range(10):
         seed_list.append(42+i)
-    epochs = [300, 500, 1000, 2000]
+    epochs = [60,100, 150, 200, 300, 500, 1000, 2000]
     for epoch in epochs:
         epoch_log_mae = []
         epoch_log_rmse = []
