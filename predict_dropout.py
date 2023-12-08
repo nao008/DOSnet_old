@@ -111,7 +111,6 @@ def reset_random_seed(seed):
     tf.keras.utils.set_random_seed(1)
     tf.config.experimental.enable_op_determinism()
 
-
 def main():
     start_time = time.time()
     datadir = f"data/{args.data_dir}"
@@ -187,7 +186,7 @@ def create_model(shared_conv, channels, dropout, seed):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(dropout, seed=args.seed)(convmerge)
+    convmerge = Dropout(dropout, seed=args.seed)(convmerge, training=True)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
@@ -667,7 +666,8 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     ### define dropoout
     dropout_width = args.dropout_width
     if dropout_width == "wide":
-        Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
+        # Dropouts = [0.0, 0.2, 0.4, 0.6, 0.8]
+        Dropouts = [0.2]
     elif dropout_width == "detail":
         Dropouts = [0.3, 0.34, 0.38, 0.42, 0.46]
     elif dropout_width == "custom":
@@ -675,9 +675,9 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     else:
         print("dropout_width is not defined")
         sys.exit()
-    seed_list = []
-    for i in range(10):
-        seed_list.append(42+i)
+    seed_list = [42]
+    # for i in range(10):
+    #     seed_list.append(42+i)
     for dropout in Dropouts:
         dropout_log_mae = []
         dropout_log_rmse = []
@@ -728,73 +728,41 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
                         verbose=0,
                         callbacks=[lr_scheduler],
                     )
-                    scores = model_CV.evaluate(
-                        [
-                            x_surface_dos[test, :, 0:9],
-                            x_surface_dos[test, :, 9:18],
-                            x_surface_dos[test, :, 18:27],
-                        ],
-                        y_targets[test],
-                        verbose=0,
-                    )
-                    train_out_CV_temp = model_CV.predict(
-                        [
-                            x_surface_dos[test, :, 0:9],
-                            x_surface_dos[test, :, 9:18],
-                            x_surface_dos[test, :, 18:27],
-                        ]
-                    )
-                    train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-                elif args.multi_adsorbate == 1:
-                    model_CV = create_model_combined(shared_conv, args.channels)
-                    model_CV.compile(
-                        loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
-                    )
-                    model_CV.fit(
-                        [
-                            x_surface_dos[train, :, 0:9],
-                            x_surface_dos[train, :, 9:18],
-                            x_surface_dos[train, :, 18:27],
-                            x_adsorbate_dos[train, :, :],
-                        ],
-                        y_targets[train],
-                        batch_size=args.batch_size,
-                        epochs=args.epochs,
-                        verbose=0,
-                        callbacks=[lr_scheduler],
-                    )
-                    scores = model_CV.evaluate(
-                        [
-                            x_surface_dos[test, :, 0:9],
-                            x_surface_dos[test, :, 9:18],
-                            x_surface_dos[test, :, 18:27],
-                            x_adsorbate_dos[test, :, :],
-                        ],
-                        y_targets[test],
-                        verbose=0,
-                    )
-                    train_out_CV_temp = model_CV.predict(
-                        [
-                            x_surface_dos[test, :, 0:9],
-                            x_surface_dos[test, :, 9:18],
-                            x_surface_dos[test, :, 18:27],
-                            x_adsorbate_dos[test, :, :],
-                        ]
-                    )
-                    train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+                    train_out_CV_temp_list = []
+                    for j in range(500):
+                        scores = model_CV.evaluate(
+                            [
+                                x_surface_dos[test, :, 0:9],
+                                x_surface_dos[test, :, 9:18],
+                                x_surface_dos[test, :, 18:27],
+                            ],
+                            y_targets[test],
+                            verbose=0,
+                        )
+                        train_out_CV_temp = model_CV.predict(
+                            [
+                                x_surface_dos[test, :, 0:9],
+                                x_surface_dos[test, :, 9:18],
+                                x_surface_dos[test, :, 18:27],
+                            ]
+                        )
+                        train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
+                        train_out_CV_temp_list.append(train_out_CV_temp)
 
                 print((model_CV.metrics_names[1], scores[1]))
                 cvscores.append(scores[1])
                 try:
-                    train_out_CV = np.append(train_out_CV, train_out_CV_temp)
+                    train_out_CV.append(train_out_CV_temp_list)
                     test_y_CV = np.append(test_y_CV, y_targets[test])
                     test_index = np.append(test_index, test)
                     print("add result")
                 except:
-                    train_out_CV = train_out_CV_temp
+                    train_out_CV = []
+                    train_out_CV.append(train_out_CV_temp_list)
                     test_y_CV = y_targets[test]
                     test_index = test
                     print("first result")
+            
             print((np.mean(cvscores), np.std(cvscores)))
             print(len(test_y_CV))
             print(len(train_out_CV))
