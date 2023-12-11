@@ -21,25 +21,14 @@ Example: \
 
 Output will be written to txt files as "predict_test.txt" or "predict_train.txt" or "CV_predict.txt" for a cross-validation run.
 
-4. plot.py
-結果を散布図とヒスとグラムで描写
-`python3 plot.py`
+
+5. file\
+- change_dropout.py\
+dropoutを変更して実行。各dropoutは別seedで10回ずつ\
+- change_epoch.py\
+epochを変更して実行。各epochは別seedで10回ずつ\
 
 
-5. option
-
-- ドロップアウトの値を変えて実行\
-wide:[0.0, 0.2, 0.4, 0.6, 0.8]\
-deteail:[0.3, 0.34, 0.38, 0.42, 0.46]\
-`python3 chanege_dropout.py`\
-実行して作成したデータをグラフに描写\
-`python3 plot_dropout.py`\
-
-- epoch数を変えて実行\
-epock:[20, 60, 100, 150, 200]\
-`python3 change_epoch.py`\
-実行して作成したデータをグラフに描写\
-`python3 plot_epoch.py`\
 
 
 
