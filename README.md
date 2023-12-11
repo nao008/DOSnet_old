@@ -28,6 +28,7 @@ Output will be written to txt files as "predict_test.txt" or "predict_train.txt"
 5. file\
 - change_dropout.py\
 dropoutを変更して実行。各dropoutは別seedで10回ずつ\
+`python3 change_dropout.py --run_mode=1 --kfold_num=1`\
 - change_epoch.py\
 epochを変更して実行。各epochは別seedで10回ずつ\
 
