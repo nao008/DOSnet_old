@@ -131,6 +131,7 @@ def main():
     elif args.run_mode == 1:
         mode = "kfold"
         kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
+        print("####################確認完了####################")
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
 
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -498,6 +499,7 @@ def run_training(args, x_surface_dos, x_adsorbate_dos, y_targets, log):
 def kfold_test(args, x_surface_dos_raw, x_adsorbate_dos, y_targets):
     results = []
     for i in range(2):
+        print(f"####################{i}回目####################")
         x_surface_dos = x_surface_dos_raw.copy()
         seed = args.seed
         #seedの固定
@@ -675,13 +677,14 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
     else:
         print("dropout_width is not defined")
         sys.exit()
-    seed_list = [42]
-    # for i in range(10):
-    #     seed_list.append(42+i)
+    seed_list = []
+    for i in range(100):
+        seed_list.append(42+i)
     for dropout in Dropouts:
         dropout_log_mae = []
         dropout_log_rmse = []
         for seed_val in seed_list:
+            print(f"####################seed{seed_val}回目####################")
             kfold_count = 0
             for train, test in kfold.split(x_surface_dos_raw, y_targets):
                 x_surface_dos = x_surface_dos_raw.copy()
@@ -728,37 +731,33 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
                         verbose=0,
                         callbacks=[lr_scheduler],
                     )
-                    train_out_CV_temp_list = []
-                    for j in range(500):
-                        scores = model_CV.evaluate(
-                            [
-                                x_surface_dos[test, :, 0:9],
-                                x_surface_dos[test, :, 9:18],
-                                x_surface_dos[test, :, 18:27],
-                            ],
-                            y_targets[test],
-                            verbose=0,
-                        )
-                        train_out_CV_temp = model_CV.predict(
-                            [
-                                x_surface_dos[test, :, 0:9],
-                                x_surface_dos[test, :, 9:18],
-                                x_surface_dos[test, :, 18:27],
-                            ]
-                        )
-                        train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
-                        train_out_CV_temp_list.append(train_out_CV_temp)
+                    scores = model_CV.evaluate(
+                        [
+                            x_surface_dos[test, :, 0:9],
+                            x_surface_dos[test, :, 9:18],
+                            x_surface_dos[test, :, 18:27],
+                        ],
+                        y_targets[test],
+                        verbose=0,
+                    )
+                    train_out_CV_temp = model_CV.predict(
+                        [
+                            x_surface_dos[test, :, 0:9],
+                            x_surface_dos[test, :, 9:18],
+                            x_surface_dos[test, :, 18:27],
+                        ]
+                    )
+                    train_out_CV_temp = train_out_CV_temp.reshape(len(train_out_CV_temp))
 
                 print((model_CV.metrics_names[1], scores[1]))
                 cvscores.append(scores[1])
                 try:
-                    train_out_CV.append(train_out_CV_temp_list)
+                    train_out_CV = np.append(train_out_CV, train_out_CV_temp)
                     test_y_CV = np.append(test_y_CV, y_targets[test])
                     test_index = np.append(test_index, test)
                     print("add result")
                 except:
-                    train_out_CV = []
-                    train_out_CV.append(train_out_CV_temp_list)
+                    train_out_CV = train_out_CV_temp
                     test_y_CV = y_targets[test]
                     test_index = test
                     print("first result")
