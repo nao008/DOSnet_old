@@ -1,5 +1,8 @@
 # DOSnet
+https://www.nature.com/articles/s41467-020-20342-6#additional-information
 
+# data
+https://figshare.com/articles/dataset/DOSnet_data/14511978
 
 **Usage:**
 
