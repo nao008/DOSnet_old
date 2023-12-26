@@ -1,4 +1,3 @@
-# ドロップアウトの変更による精度の差
 import numpy as np
 import pickle
 import time
@@ -26,7 +25,7 @@ from keras.layers import (
     Concatenate,
 )
 from keras import backend
-from keras.callbacks import TensorBoard, LearningRateScheduler
+from keras.callbacks import TensorBoard, LearningRateScheduler, ModelCheckpoint
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
@@ -95,6 +94,12 @@ parser.add_argument(
     default=5,
     type=int,
     help="kfoldの回数。(dfault:5)"
+)
+parser.add_argument(
+    "--MC_dropout",
+    default=0,
+    type=int,
+    help="MC dropoutを使用するか。(dfault:0)"
 )
 args = parser.parse_args(sys.argv[1:])
 
@@ -187,7 +192,10 @@ def create_model(shared_conv, channels, dropout, seed):
 
     convmerge = Concatenate(axis=-1)([conv1, conv2, conv3])
     convmerge = Flatten()(convmerge)
-    convmerge = Dropout(dropout, seed=args.seed)(convmerge)#, training=True)
+    if args.MC_dropout == 0:
+        convmerge = Dropout(dropout, seed=args.seed)(convmerge)
+    else:
+        convmerge = Dropout(dropout, seed=args.seed)(convmerge, training=True)
     convmerge = Dense(200, activation="linear")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
     convmerge = Dense(1000, activation="relu")(convmerge)
@@ -678,7 +686,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         print("dropout_width is not defined")
         sys.exit()
     seed_list = []
-    for i in range(100):
+    for i in range(5):
         seed_list.append(42+i)
     for dropout in Dropouts:
         dropout_log_mae = []
@@ -719,18 +727,33 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
                     model_CV.compile(
                         loss="logcosh", optimizer=Adam(0.001), metrics=["mean_absolute_error"]
                     )
-                    model_CV.fit(
-                        [
-                            x_surface_dos[train, :, 0:9],
-                            x_surface_dos[train, :, 9:18],
-                            x_surface_dos[train, :, 18:27],
-                        ],
-                        y_targets[train],
-                        batch_size=args.batch_size,
-                        epochs=args.epochs,
-                        verbose=0,
-                        callbacks=[lr_scheduler],
-                    )
+                    if args.save_model == 0:
+                        model_CV.fit(
+                            [
+                                x_surface_dos[train, :, 0:9],
+                                x_surface_dos[train, :, 9:18],
+                                x_surface_dos[train, :, 18:27],
+                            ],
+                            y_targets[train],
+                            batch_size=args.batch_size,
+                            epochs=args.epochs,
+                            verbose=0,
+                            callbacks=[lr_scheduler],
+                        )
+                    elif args.save_model == 1:
+                        checkpoint = ModelCheckpoint(f'models/{args.data_dir}_dropout{dropout}_seed{seed_val}_kfold{args.kfold_num}_epoch{args.epoch}.h5', monitor='loss', verbose=1, save_best_only=True, mode='min')
+                        model_CV.fit(
+                            [
+                                x_surface_dos[train, :, 0:9],
+                                x_surface_dos[train, :, 9:18],
+                                x_surface_dos[train, :, 18:27],
+                            ],
+                            y_targets[train],
+                            batch_size=args.batch_size,
+                            epochs=args.epochs,
+                            verbose=0,
+                            callbacks=[lr_scheduler, checkpoint],
+                        )
                     scores = model_CV.evaluate(
                         [
                             x_surface_dos[test, :, 0:9],
