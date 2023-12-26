@@ -135,7 +135,7 @@ def main():
         run_training(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
     elif args.run_mode == 1:
         mode = "kfold"
-        kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
+        # kfold_test(args, x_surface_dos, x_adsorbate_dos, y_targets)
         print("####################確認完了####################")
         run_kfold(args, x_surface_dos, x_adsorbate_dos, y_targets,log)
 
@@ -686,7 +686,7 @@ def run_kfold(args, x_surface_dos_raw, x_adsorbate_dos, y_targets,log):
         print("dropout_width is not defined")
         sys.exit()
     seed_list = []
-    for i in range(5):
+    for i in range(100):
         seed_list.append(42+i)
     for dropout in Dropouts:
         dropout_log_mae = []
